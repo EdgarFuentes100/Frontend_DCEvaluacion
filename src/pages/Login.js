@@ -14,7 +14,9 @@ function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (pin.length !== 4) return;
+
+    // ✅ Permitimos PIN de 4 a 8 caracteres
+    if (pin.length < 4 || pin.length > 8) return;
 
     setIsLoading(true);
     setErrorMsg(null);
@@ -69,7 +71,9 @@ function Login() {
                     >
                       TalentoHumano Pro
                     </h1>
-                    <p className="text-muted small">Sistema de Gestión de Recursos Humanos</p>
+                    <p className="text-muted small">
+                      Sistema de Gestión de Recursos Humanos
+                    </p>
                   </div>
 
                   <form className="mb-4" onSubmit={handleSubmit}>
@@ -79,14 +83,18 @@ function Login() {
                       </label>
                       <div className="input-group">
                         <input
-                          type="password"
+                          type="text"
                           className={`form-control py-3 ${errorMsg ? "is-invalid" : ""}`}
-                          placeholder="Ingrese su PIN de 4 dígitos"
+                          placeholder="Ingrese su PIN (4-8 caracteres)"
                           value={pin}
                           onChange={(e) =>
-                            setPin(e.target.value.replace(/\D/g, "").slice(0, 4))
+                            setPin(
+                              e.target.value
+                                .replace(/[^A-Za-z0-9]/g, "") // solo letras y números
+                                .slice(0, 8) // máximo 8 caracteres
+                            )
                           }
-                          maxLength={4}
+                          maxLength={8}
                           style={{ borderRight: "none" }}
                         />
                         <span
@@ -108,7 +116,7 @@ function Login() {
                     <button
                       type="submit"
                       className="btn btn-primary w-100 py-3 fw-medium"
-                      disabled={pin.length !== 4 || isLoading}
+                      disabled={pin.length < 4 || pin.length > 8 || isLoading}
                       style={{
                         transition: "all 0.3s",
                         border: "none",
@@ -147,8 +155,9 @@ function Login() {
                   </div>
                 </div>
 
-                {/* Imagen lateral - CORREGIDO */}
-                <div className="col-md-6 d-none d-md-block position-relative"
+                {/* Imagen lateral */}
+                <div
+                  className="col-md-6 d-none d-md-block position-relative"
                   style={{ background: "linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)" }}
                 >
                   <div className="position-absolute w-100 h-100 bg-dark bg-opacity-20"></div>
@@ -160,7 +169,8 @@ function Login() {
                     onError={(e) => {
                       e.target.onerror = null;
                       e.target.style.display = "none";
-                      e.target.parentElement.style.background = "linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)";
+                      e.target.parentElement.style.background =
+                        "linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)";
                     }}
                   />
                   <div

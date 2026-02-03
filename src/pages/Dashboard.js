@@ -31,6 +31,8 @@ const Dashboard = () => {
           </div>
           <div className="ms-2">
             <strong>{user.nombre}</strong>
+                        <strong>{user.urlPlantilla}</strong>
+
             <br />
             <small className="text-white-50">{user.rol}</small>
           </div>

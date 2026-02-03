@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFetch } from '../../api/useFetch';
 import { useCamara } from '../../hook/useCamara';
+import { useAuthContext } from "../../auth/AuthProvider";
 
 function PruebaExcel() {
   const navigate = useNavigate();
   const { postFetch } = useFetch();
-  
-  const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1zgnbehJhbobg-IO2zwwjwpt0yOG4pXKtF2O0w9f6wE4/edit?usp=sharing';
+  const { user } = useAuthContext();
 
   const {
     videoRef,
@@ -87,42 +87,68 @@ function PruebaExcel() {
       </div>
 
       <div className="px-4 py-4">
-        {/* CONTROLES */}
-        <div className="mb-4">
-          {!isStarted && !isFinished && (
-            <button className="btn btn-success btn-lg" onClick={iniciarPrueba}>
-              <i className="bi bi-play-circle me-2"></i>Iniciar Prueba
-            </button>
-          )}
-
-          {isStarted && (
-            <button className="btn btn-danger btn-lg" onClick={finalizarPrueba}>
-              <i className="bi bi-stop-circle me-2"></i>Finalizar Prueba
-            </button>
-          )}
-        </div>
-
-        {/* GOOGLE SHEET EMBEBIDO */}
-        {isStarted && (
-          <div className="bg-white border rounded p-3 mb-4 shadow-sm" style={{ minHeight: '600px' }}>
-            <div className="alert alert-info small mb-3">
-              <i className="bi bi-info-circle me-1"></i>
-              Trabaja directamente en esta hoja de cálculo. Todos los cambios se guardan automáticamente.
+        {/* INSTRUCCIONES + BOTÓN */}
+        {!isStarted && !isFinished && (
+          <div className="d-flex flex-column flex-lg-row gap-4">
+            <div className="flex-grow-1"></div> {/* Espacio vacío para mantener layout */}
+            
+            <div className="flex-shrink-0 bg-light border rounded p-3 shadow-sm" style={{ width: '300px' }}>
+              <h5 className="fw-bold mb-3">Instrucciones</h5>
+              <p className="small mb-3">
+                1. Lee las instrucciones cuidadosamente.<br />
+                2. Completa la hoja de cálculo según las indicaciones.<br />
+                3. Tu progreso se guardará automáticamente.
+              </p>
+              <div className="mb-3">
+                <img src="/ruta/a/tu/imagen.jpg" alt="Indicaciones" className="img-fluid rounded border" />
+              </div>
+              <button className="btn btn-success w-100 mt-3" onClick={iniciarPrueba}>
+                <i className="bi bi-play-circle me-2"></i>Iniciar Prueba
+              </button>
             </div>
-            <iframe
-              src={SHEET_URL}
-              width="100%"
-              height="800"
-              frameBorder="0"
-              allow="clipboard-read; clipboard-write"
-              title="Google Sheet Editor"
-            ></iframe>
+          </div>
+        )}
+
+        {/* GOOGLE SHEET + SEGUIMIENTO: SOLO DESPUÉS DE INICIAR */}
+        {isStarted && (
+          <div className="d-flex flex-column flex-lg-row gap-4">
+            {/* IZQUIERDA: Google Sheet */}
+            <div className="flex-grow-1 bg-white border rounded p-3 shadow-sm" style={{ minHeight: '600px' }}>
+              <div className="alert alert-info small mb-3">
+                <i className="bi bi-info-circle me-1"></i>
+                Trabaja directamente en esta hoja de cálculo. Todos los cambios se guardan automáticamente.
+              </div>
+              <iframe
+                src={user.urlPlantilla}
+                width="100%"
+                height="600"
+                frameBorder="0"
+                allow="clipboard-read; clipboard-write"
+                title="Google Sheet Editor"
+              ></iframe>
+            </div>
+
+            {/* DERECHA: Imagen + Instrucciones */}
+            <div className="flex-shrink-0 bg-light border rounded p-3 shadow-sm" style={{ width: '300px' }}>
+              <h5 className="fw-bold mb-3">Instrucciones</h5>
+              <p className="small mb-3">
+                1. Lee las instrucciones cuidadosamente.<br />
+                2. Completa la hoja de cálculo según las indicaciones.<br />
+                3. Tu progreso se guardará automáticamente.
+              </p>
+              <div className="mb-3">
+                <img src="/ruta/a/tu/imagen.jpg" alt="Indicaciones" className="img-fluid rounded border" />
+              </div>
+              <button className="btn btn-danger w-100 mt-3" onClick={finalizarPrueba}>
+                <i className="bi bi-stop-circle me-2"></i>Finalizar Prueba
+              </button>
+            </div>
           </div>
         )}
 
         {/* SECCIÓN DE FOTOS */}
         {fotos.length > 0 && (
-          <div className="bg-white border rounded p-4 mb-4">
+          <div className="bg-white border rounded p-4 my-4">
             <h6 className="fw-bold mb-3">Capturas de supervisión ({fotos.length})</h6>
             <div className="d-flex flex-wrap gap-2">
               {fotos.slice(-4).map((foto, index) => (

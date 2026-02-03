@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 
 function useFetch() {
-  const urlBase = "https://backend-dcevaluacion.onrender.com/api/v1/" || "http://localhost:4000/api/v1/";
+  const urlBase = "https://backend-dcevaluacion.onrender.com/api/v1/"; ///"http://localhost:4000/api/v1/"
 
   const manejarRespuesta = async (response) => {
     const contentType = response.headers.get("content-type") || "";
@@ -44,7 +44,32 @@ function useFetch() {
     }).then(manejarRespuesta);
   }, [urlBase]);
 
-  return { getFetch, postFetch };
+  const putFetch = (urlParcial, datos) => {
+    const token = localStorage.getItem("tokenPerfil");
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    return fetch(urlBase + urlParcial, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify(datos),
+      credentials: "include",
+    }).then(manejarRespuesta);
+  };
+
+  const deleteFetch = (urlParcial) => {
+    const token = localStorage.getItem("tokenPerfil");
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    return fetch(urlBase + urlParcial, {
+      method: "DELETE",
+      headers,
+      credentials: "include",
+    }).then(manejarRespuesta);
+  };
+
+  return { getFetch, postFetch, putFetch, deleteFetch };
 }
 
 export { useFetch };

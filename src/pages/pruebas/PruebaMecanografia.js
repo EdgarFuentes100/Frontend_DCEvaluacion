@@ -241,40 +241,6 @@ function PruebaMecanografia() {
 
       {/* Contenido principal */}
       <div className="px-4 py-4">
-        {/* Panel de control */}
-        <div className="mb-4">
-          <div className="bg-white rounded shadow-sm border-0 p-4">
-            <div className="row g-3 align-items-center">
-              <div className="col-md-6 text-center">
-                <div className="display-4 fw-bold text-primary">
-                  {formatTiempo(tiempoTranscurrido)}
-                </div>
-                <small className="text-muted fw-semibold">TIEMPO TRANSCURRIDO</small>
-              </div>
-              
-              <div className="col-md-6 text-end">
-                {!isActive && !isFinished ? (
-                  <button 
-                    className="btn btn-success btn-lg px-5 py-3"
-                    onClick={iniciarPrueba}
-                  >
-                    <i className="bi bi-play-circle me-2"></i>
-                    Iniciar Prueba
-                  </button>
-                ) : isActive ? (
-                  <button 
-                    className="btn btn-danger btn-lg px-5 py-3"
-                    onClick={finalizarPrueba}
-                  >
-                    <i className="bi bi-stop-circle me-2"></i>
-                    Finalizar Prueba
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Contenido principal - Grid de 2 columnas */}
         <div className="row g-4">
           {/* Columna izquierda - Texto y entrada */}
@@ -382,17 +348,46 @@ function PruebaMecanografia() {
             </div>
           </div>
 
-          {/* Columna derecha - Estadísticas */}
+          {/* Columna derecha - Control de prueba y estadísticas */}
           <div className="col-xl-4">
-            <div className="bg-white rounded shadow-sm h-100 border-0">
+            <div className="bg-white rounded shadow-sm h-100 border-0 d-flex flex-column">
+              {/* Panel de control de tiempo */}
               <div className="p-4 border-bottom">
-                <h5 className="mb-0 fw-bold">
+                <div className="text-center mb-3">
+                  <div className="display-4 fw-bold text-primary">
+                    {formatTiempo(tiempoTranscurrido)}
+                  </div>
+                  <small className="text-muted fw-semibold">TIEMPO TRANSCURRIDO</small>
+                </div>
+                
+                <div className="text-center">
+                  {!isActive && !isFinished ? (
+                    <button 
+                      className="btn btn-success btn-lg w-100 py-3"
+                      onClick={iniciarPrueba}
+                    >
+                      <i className="bi bi-play-circle me-2"></i>
+                      Iniciar Prueba
+                    </button>
+                  ) : isActive ? (
+                    <button 
+                      className="btn btn-danger btn-lg w-100 py-3"
+                      onClick={finalizarPrueba}
+                    >
+                      <i className="bi bi-stop-circle me-2"></i>
+                      Finalizar Prueba
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* Estadísticas */}
+              <div className="p-4 border-bottom">
+                <h5 className="mb-3 fw-bold">
                   <i className="bi bi-speedometer2 me-2 text-primary"></i>
                   Estadísticas en Tiempo Real
                 </h5>
-              </div>
-              <div className="p-4">
-                {/* Grid de estadísticas */}
+                
                 <div className="row g-3 mb-4">
                   <div className="col-6">
                     <div className="border rounded p-3 text-center bg-success bg-opacity-10 border-success border-opacity-25">
@@ -441,10 +436,12 @@ function PruebaMecanografia() {
                     </div>
                   </div>
                 </div>
+              </div>
 
-                {/* Estado de la cámara */}
-                <div className="border rounded p-3 mb-4 bg-light">
-                  <h6 className="fw-bold text-dark">
+              {/* Información de cámara */}
+              <div className="p-4 border-bottom">
+                <div className="border rounded p-3 bg-light">
+                  <h6 className="fw-bold text-dark mb-3">
                     <i className="bi bi-camera-video text-primary me-2"></i>
                     Estado de Supervisión:
                   </h6>
@@ -463,10 +460,12 @@ function PruebaMecanografia() {
                     Se toman fotos automáticamente cada 30 segundos
                   </div>
                 </div>
+              </div>
 
-                {/* Consejos */}
-                <div className="border rounded p-3 mb-4 bg-light">
-                  <h6 className="fw-bold text-dark">
+              {/* Consejos */}
+              <div className="p-4 border-bottom">
+                <div className="border rounded p-3 bg-light">
+                  <h6 className="fw-bold text-dark mb-3">
                     <i className="bi bi-lightbulb text-warning me-2"></i>
                     Consejos para Mejorar:
                   </h6>
@@ -489,77 +488,90 @@ function PruebaMecanografia() {
                     </li>
                   </ul>
                 </div>
-
-                {/* Botón enviar */}
-                {isFinished && (
-                  <button
-                    className="btn btn-primary w-100 py-3 fw-bold"
-                    onClick={enviarResultados}
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2"></span>
-                        Enviando Resultados...
-                      </>
-                    ) : (
-                      <>
-                        <i className="bi bi-send-check me-2"></i>
-                        ENVIAR RESULTADOS Y FOTOS
-                      </>
-                    )}
-                  </button>
-                )}
               </div>
+
+              {/* Botón enviar resultados */}
+              {isFinished && (
+                <div className="p-4 mt-auto">
+                  <div className="bg-primary bg-opacity-10 rounded border border-primary border-opacity-25 p-3">
+                    <div className="mb-3">
+                      <h6 className="fw-bold text-dark mb-2">
+                        <i className="bi bi-send-check text-primary me-2"></i>
+                        Resultados Listos para Enviar
+                      </h6>
+                      <p className="small text-muted mb-2">
+                        Se enviarán {fotos.length} fotos junto con tus estadísticas
+                      </p>
+                    </div>
+                    <button
+                      className="btn btn-primary w-100 py-3 fw-bold"
+                      onClick={enviarResultados}
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2"></span>
+                          Enviando Resultados...
+                        </>
+                      ) : (
+                        <>
+                          <i className="bi bi-cloud-arrow-up me-2"></i>
+                          ENVIAR RESULTADOS
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Instrucciones finales */}
+        {/* Información importante */}
         <div className="mt-4">
           <div className="bg-white rounded shadow-sm border-0">
-            <div className="p-4 border-bottom">
-              <h5 className="mb-0 fw-bold text-primary">
+            <div className="p-3 border-bottom">
+              <h6 className="mb-0 fw-bold text-primary">
                 <i className="bi bi-info-circle me-2"></i>
-                Información Importante
-              </h5>
+                Información de la Prueba
+              </h6>
             </div>
-            <div className="p-4">
-              <div className="row">
-                <div className="col-md-3 mb-3">
-                  <div className="text-center">
-                    <div className="bg-primary bg-opacity-10 rounded-circle d-inline-flex p-3 mb-2">
-                      <i className="bi bi-clock text-primary fs-4"></i>
+            <div className="p-3">
+              <div className="row g-2">
+                <div className="col-md-3 col-6">
+                  <div className="d-flex align-items-center">
+                    <i className="bi bi-clock-fill text-primary fs-5 me-2"></i>
+                    <div>
+                      <small className="fw-bold d-block">Tiempo</small>
+                      <small className="text-muted">Sin límite</small>
                     </div>
-                    <h6 className="fw-bold">Tiempo</h6>
-                    <p className="text-muted small mb-0">No hay límite de tiempo</p>
                   </div>
                 </div>
-                <div className="col-md-3 mb-3">
-                  <div className="text-center">
-                    <div className="bg-success bg-opacity-10 rounded-circle d-inline-flex p-3 mb-2">
-                      <i className="bi bi-check-circle text-success fs-4"></i>
+                <div className="col-md-3 col-6">
+                  <div className="d-flex align-items-center">
+                    <i className="bi bi-check-circle-fill text-success fs-5 me-2"></i>
+                    <div>
+                      <small className="fw-bold d-block">Precisión</small>
+                      <small className="text-muted">Se evalúa</small>
                     </div>
-                    <h6 className="fw-bold">Precisión</h6>
-                    <p className="text-muted small mb-0">Cada error reduce tu puntaje</p>
                   </div>
                 </div>
-                <div className="col-md-3 mb-3">
-                  <div className="text-center">
-                    <div className="bg-warning bg-opacity-10 rounded-circle d-inline-flex p-3 mb-2">
-                      <i className="bi bi-camera-video text-warning fs-4"></i>
+                <div className="col-md-3 col-6">
+                  <div className="d-flex align-items-center">
+                    <i className="bi bi-camera-video-fill text-warning fs-5 me-2"></i>
+                    <div>
+                      <small className="fw-bold d-block">Cámara</small>
+                      <small className="text-muted">Supervisión activa</small>
                     </div>
-                    <h6 className="fw-bold">Cámara</h6>
-                    <p className="text-muted small mb-0">Se tomarán fotos automáticas</p>
                   </div>
                 </div>
-                <div className="col-md-3 mb-3">
-                  <div className="text-center">
-                    <div className="bg-info bg-opacity-10 rounded-circle d-inline-flex p-3 mb-2">
-                      <i className="bi bi-exclamation-triangle text-info fs-4"></i>
+                <div className="col-md-3 col-6">
+                  <div className="d-flex align-items-center">
+                    <i className="bi bi-exclamation-triangle-fill text-info fs-5 me-2"></i>
+                    <div>
+                      <small className="fw-bold d-block">Nota</small>
+                      <small className="text-muted">Permite cámara</small>
                     </div>
-                    <h6 className="fw-bold">Nota</h6>
-                    <p className="text-muted small mb-0">Permite acceso a la cámara</p>
                   </div>
                 </div>
               </div>
