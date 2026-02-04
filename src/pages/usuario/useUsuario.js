@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useFetch } from "../../api/useFetch";
 import { ModelUsuario } from "./ModelUsuario";
 
 const useUsuarios = () => {
-  const { getFetch, postFetch, putFetch} = useFetch();
+  const { getFetch, postFetch, putFetch } = useFetch();
 
   const [usuarios, setUsuarios] = useState([]);
   const [showSubModal, setShowSubModal] = useState(false);
@@ -11,14 +11,14 @@ const useUsuarios = () => {
   const [operacion, setOperacion] = useState(1);
   const [errores, setErrores] = useState({});
 
-  useEffect(() => {
-    listarUsuarios();
-  }, []);
-
-  const listarUsuarios = async () => {
+  const listarUsuarios = useCallback(async () => {
     const res = await getFetch("usuarios/listar");
     if (res.ok) setUsuarios(res.datos);
-  };
+  }, [getFetch]);
+
+  useEffect(() => {
+    listarUsuarios();
+  }, [listarUsuarios]);
 
   const openSubModal = (op, usuario = ModelUsuario()) => {
     setOperacion(op);
@@ -47,7 +47,6 @@ const useUsuarios = () => {
     if (!usuarioSeleccionado.dui) err.dui = true;
     if (!usuarioSeleccionado.idRol) err.idRol = true;
 
-    // 🔐 PIN obligatorio SOLO al crear
     if (operacion === 1 && !usuarioSeleccionado.pinCode) {
       err.pinCode = true;
     }
@@ -67,8 +66,10 @@ const useUsuarios = () => {
   };
 
   const editarUsuario = async () => {
-    const res = await putFetch(`usuarios/${usuarioSeleccionado.idUsuario}`,usuarioSeleccionado);
-    console.log(usuarioSeleccionado, usuarioSeleccionado.idUsuario );
+    const res = await putFetch(
+      `usuarios/${usuarioSeleccionado.idUsuario}`,
+      usuarioSeleccionado
+    );
     if (res.ok) listarUsuarios();
   };
 
