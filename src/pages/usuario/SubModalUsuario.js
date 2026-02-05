@@ -1,4 +1,5 @@
 import React from "react";
+import { usePlantilla } from "../../hook/usePlantilla";
 
 /* ===== GENERAR PIN SEGURO ===== */
 const generarPinSeguro = () => {
@@ -16,6 +17,9 @@ const SubModalUsuario = ({
   errores,
   operacion
 }) => {
+
+  const { plantillas } = usePlantilla();
+
   if (!usuario) return null;
 
   const modoEdicion = operacion === 2;
@@ -70,21 +74,43 @@ const SubModalUsuario = ({
         </select>
       </div>
 
-      {/* ===== PLANTILLA (QUEMADO) ===== */}
+      {/* ===== PLANTILLA ===== */}
       <div className="col-12">
         <label className="form-label fw-semibold">Plantilla</label>
         <select
-          className="form-select"
-          name="idPlantilla"
-          value={usuario.idPlantilla || ""}
+          className={`form-select ${errores.idPlantilla ? "is-invalid" : ""}`}
+          name="idplantilla_excel"
+          value={usuario.idplantilla_excel || ""}
           onChange={onChange}
         >
           <option value="">Seleccione plantilla</option>
-          <option value="1">Plantilla 1</option>
-          <option value="2">Plantilla 2</option>
-          <option value="3">Plantilla 3</option>
-          <option value="4">Plantilla 4</option>
+
+          {plantillas && plantillas.length > 0 ? (
+            plantillas.map((p) => (
+              <option
+                key={p.idplantilla_excel}
+                value={p.idplantilla_excel}
+              >
+                Plantilla #{p.idplantilla_excel}
+              </option>
+            ))
+          ) : (
+            <option disabled>No hay plantillas</option>
+          )}
         </select>
+      </div>
+
+      {/* ===== DURACIÓN PIN (CREAR Y EDITAR) ===== */}
+      <div className="col-6">
+        <label className="form-label fw-semibold">Duración PIN (min)</label>
+        <input
+          type="number"
+          min={1}
+          className={`form-control ${errores.duracionPinMin ? "is-invalid" : ""}`}
+          name="duracionPinMin"
+          value={usuario.duracionPinMin ?? 60}
+          onChange={onChange}
+        />
       </div>
 
       {/* ===== PIN SOLO AL CREAR ===== */}
@@ -110,23 +136,12 @@ const SubModalUsuario = ({
               🔐 Generar PIN automático
             </button>
           </div>
-
-          <div className="col-6">
-            <label className="form-label fw-semibold">Duración PIN (min)</label>
-            <input
-              type="number"
-              className="form-control"
-              name="duracionPinMin"
-              value={usuario.duracionPinMin ?? 60}
-              onChange={onChange}
-            />
-          </div>
         </>
       )}
 
       {/* ===== ACTIVO SOLO AL EDITAR ===== */}
       {modoEdicion && (
-        <div className="col-12">
+        <div className="col-6">
           <label className="form-label fw-semibold">Activo</label>
           <select
             className="form-select"

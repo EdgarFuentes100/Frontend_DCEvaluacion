@@ -7,7 +7,8 @@ function ModelUsuario(
   rol = "",
   pinCode = "",
   duracionPinMin = 5,
-  activo = 1
+  activo = 1,
+  idplantilla_excel = null
 ) {
   return {
     idUsuario,
@@ -18,7 +19,8 @@ function ModelUsuario(
     rol,
     pinCode,
     duracionPinMin,
-    activo
+    activo,
+    idplantilla_excel
   };
 }
 
