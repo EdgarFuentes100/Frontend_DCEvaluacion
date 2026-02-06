@@ -40,13 +40,17 @@ function Login() {
 
         {/* ===== FORM ===== */}
         <div className="login-form">
+
+          {/* GLOBO */}
+          <div className="globe-container">
+            <div className="globe"></div>
+          </div>
+
+          {/* TITULO */}
           <div className="text-center mb-4">
-            <div className="login-icon">
-              <i className="bi bi-diagram-3-fill"></i>
-            </div>
             <h1 className="login-title">DROK</h1>
             <p className="login-subtitle">
-              Sistema Profesional de Evaluación
+              Convierte habilidades en resultados
             </p>
           </div>
 
@@ -56,10 +60,9 @@ function Login() {
             </label>
 
             <input
-              type="text"
-              className={`form-control form-control-lg ${
-                error ? "is-invalid" : ""
-              }`}
+              type="password"
+              className={`form-control form-control-lg ${error ? "is-invalid" : ""
+                }`}
               placeholder="Ingrese su PIN"
               value={pin}
               onChange={(e) =>
@@ -113,12 +116,12 @@ function Login() {
           align-items: center;
           justify-content: center;
           background: linear-gradient(180deg, #f2f4f7, #e6e9ee);
-          padding: clamp(1rem, 3vw, 3rem);
+          padding: 1rem;
         }
 
         .login-card {
           width: 100%;
-          max-width: 1200px;
+          max-width: 1100px;
           min-height: 620px;
           display: grid;
           grid-template-columns: 1.1fr 0.9fr;
@@ -130,34 +133,56 @@ function Login() {
 
         /* FORM */
         .login-form {
-          padding: clamp(2rem, 4vw, 4rem);
+          padding: 3rem;
           display: flex;
           flex-direction: column;
           justify-content: center;
         }
 
-        .login-icon {
-          width: 72px;
-          height: 72px;
-          background: #111;
-          border-radius: 50%;
+        /* GLOBO */
+        .globe-container {
           display: flex;
-          align-items: center;
           justify-content: center;
-          margin: 0 auto 1rem;
-          color: #fff;
-          font-size: 2rem;
+          margin-bottom: .6rem;
+        }
+
+        .globe {
+          width: 120px;
+          height: 120px;
+          border-radius: 50%;
+          background-image: url("https://upload.wikimedia.org/wikipedia/commons/8/80/World_map_-_low_resolution.svg");
+          background-repeat: repeat-x;
+          background-size: cover;
+          animation: rotateGlobe 28s linear infinite;
+          filter: grayscale(100%) contrast(1.2);
+          box-shadow:
+            inset -18px 0 30px rgba(0,0,0,.6),
+            0 12px 30px rgba(0,0,0,.3);
+        }
+
+        @keyframes rotateGlobe {
+          from { background-position: 0 center; }
+          to { background-position: -1200px center; }
         }
 
         .login-title {
-          font-size: 2.4rem;
+          font-size: 3.3rem;
           font-weight: 900;
-          letter-spacing: .35em;
-          color: #111;
+          letter-spacing: .18em;
+          text-transform: uppercase;
+          color: #000; /* NEGRO */
+          
+          /* BLANCO SUTIL PARA COMBINAR CON EL MUNDO */
+          text-shadow:
+            -1px -1px 0 #fff,
+            1px -1px 0 #fff,
+            -1px  1px 0 #fff,
+            1px  1px 0 #fff,
+            0 6px 14px rgba(0,0,0,.35);
         }
 
         .login-subtitle {
-          color: #666;
+          color: #555;
           font-size: 1rem;
         }
 
@@ -171,7 +196,6 @@ function Login() {
         /* IMAGE */
         .login-image {
           position: relative;
-          overflow: hidden;
         }
 
         .login-image img {
@@ -192,16 +216,6 @@ function Login() {
           padding: 2rem;
           color: #fff;
           z-index: 2;
-        }
-
-        .image-text h2 {
-          font-size: 1.6rem;
-          margin-bottom: .5rem;
-        }
-
-        .image-text p {
-          font-size: .95rem;
-          opacity: .85;
         }
 
         /* RESPONSIVE */
