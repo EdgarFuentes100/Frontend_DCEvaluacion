@@ -61,8 +61,9 @@ function Login() {
 
             <input
               type="password"
-              className={`form-control form-control-lg ${error ? "is-invalid" : ""
-                }`}
+              className={`form-control form-control-lg ${
+                error ? "is-invalid" : ""
+              }`}
               placeholder="Ingrese su PIN"
               value={pin}
               onChange={(e) =>
@@ -110,8 +111,13 @@ function Login() {
 
       {/* ===== STYLES ===== */}
       <style>{`
+        /* FIX GLOBAL (CLAVE PARA VERCEL) */
+        html, body {
+          font-size: 16px;
+        }
+
         .login-wrapper {
-          min-height: 100vh;
+          min-height: 100dvh;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -143,7 +149,7 @@ function Login() {
         .globe-container {
           display: flex;
           justify-content: center;
-          margin-bottom: .6rem;
+          margin-bottom: .8rem;
         }
 
         .globe {
@@ -165,20 +171,22 @@ function Login() {
           to { background-position: -1200px center; }
         }
 
+        /* TITULO DROK */
         .login-title {
-          font-size: 3.3rem;
+          font-size: 3.1rem;
           font-weight: 900;
-          letter-spacing: .18em;
+          letter-spacing: .14em;
           text-transform: uppercase;
-          color: #000; /* NEGRO */
-          
-          /* BLANCO SUTIL PARA COMBINAR CON EL MUNDO */
+          color: #000;
+          margin-bottom: .2rem;
+
+          /* BORDE BLANCO + SOMBRA */
           text-shadow:
             -1px -1px 0 #fff,
             1px -1px 0 #fff,
             -1px  1px 0 #fff,
             1px  1px 0 #fff,
-            0 6px 14px rgba(0,0,0,.35);
+            0 8px 16px rgba(0,0,0,.35);
         }
 
         .login-subtitle {
