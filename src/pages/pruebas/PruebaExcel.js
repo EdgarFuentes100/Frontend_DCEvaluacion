@@ -11,7 +11,7 @@ function PruebaExcel() {
   const { postFetch } = useFetch();
   const { user, logout } = useAuthContext();
   
-  // Hook automatizado: Fotos al INICIAR, cada 30s y al FINALIZAR (vía stopCamera)
+  // Hook automatizado: Captura al Iniciar, cada 30s y al Finalizar
   const { 
     videoRef, 
     canvasRef, 
@@ -23,23 +23,19 @@ function PruebaExcel() {
 
   const [isStarted, setIsStarted] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
-  const [showModal, setShowModal] = useState(false);
+  const [showModal, setShowModal] = useState(false); // Corregido: Ahora se usa en el return
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [expedienteFinal, setExpedienteFinal] = useState(null);
 
   const iniciarPrueba = async () => {
-    // startCamera captura la FOTO 1 (Inicio) automáticamente al detectar video
     await startCamera();
     setIsStarted(true);
   };
 
   const finalizarPrueba = async () => {
-    console.log("🎬 Finalizando prueba...");
-    
-    // 1. stopCamera captura la FOTO FINAL automáticamente antes de apagar el LED
+    console.log("🎬 Finalizando y capturando foto final...");
     stopCamera(); 
 
-    // 2. Captura del archivo Excel desde Google Sheets
     let excelBlob = null;
     try {
       const urlExport = user.urlPlantilla.replace(/\/edit.*$/, '/export?format=xlsx');
@@ -50,25 +46,16 @@ function PruebaExcel() {
       console.error("❌ Error capturando Excel:", error);
     }
 
-    // 3. Creación del paquete "ciego" (viviendo solo en memoria/variable)
     const dataPaquete = {
       usuario: user.nombre,
       id: user.id,
       archivoExcel: excelBlob,
-      fotosCapturadas: fotos, // Contiene: Inicio + Intervalos cada 30s + Fin
+      fotosCapturadas: fotos, 
       cantidadFotos: fotos.length,
       timestamp: new Date().toLocaleString()
     };
 
     setExpedienteFinal(dataPaquete);
-
-    // 4. LOG MAESTRO: Aquí verás que el array de fotos tiene todas las capturas
-    console.group("📂 EXPEDIENTE EXCEL GENERADO");
-    console.log("📸 Monitoreo:", dataPaquete.cantidadFotos, "fotos capturadas");
-    console.log("📊 Archivo:", dataPaquete.archivoExcel);
-    console.log("📦 Objeto completo:", dataPaquete);
-    console.groupEnd();
-
     setIsFinished(true);
     setIsStarted(false);
   };
@@ -101,7 +88,7 @@ function PruebaExcel() {
 
       <main className="container-fluid px-lg-5 px-3 py-4 flex-grow-1">
         
-        {/* HEADER DE CONTROL */}
+        {/* CABECERA DE ESTADO */}
         {!isFinished && (
           <div className="bg-white rounded-4 shadow-sm p-3 mb-4 d-flex justify-content-between align-items-center border-start border-success border-4">
             <div>
@@ -126,46 +113,65 @@ function PruebaExcel() {
           </div>
         )}
 
-        {/* PANTALLA DE INICIO */}
+        {/* PANTALLA INICIAL */}
         {!isStarted && !isFinished && (
           <div className="text-center bg-white p-5 rounded-5 shadow-sm mt-5 mx-auto border" style={{maxWidth: '600px'}}>
-             <h2 className="fw-bold">Prueba Técnica</h2>
-             <p className="text-muted">Se tomarán capturas al iniciar, durante el proceso y al finalizar de forma automática.</p>
+             <h2 className="fw-bold">Prueba Técnica de Excel</h2>
+             <p className="text-muted small">Al presionar el botón, se iniciará el cronómetro y la supervisión automática.</p>
              <button className="btn btn-success btn-lg w-100 py-3 rounded-4 fw-bold shadow" onClick={iniciarPrueba}>
                 COMENZAR EXAMEN
              </button>
           </div>
         )}
 
-        {/* EDITOR EXCEL */}
+        {/* ÁREA DE TRABAJO (IFRAME) */}
         {isStarted && (
           <div className="w-100 bg-white rounded-5 shadow-sm overflow-hidden border">
             <iframe src={user.urlPlantilla} width="100%" height="750" frameBorder="0" title="Excel"></iframe>
           </div>
         )}
 
-        {/* RESUMEN FINAL */}
+        {/* PANTALLA FINAL DE ENVÍO */}
         {isFinished && (
           <div className="text-center p-5 bg-white rounded-5 shadow-lg mx-auto mt-5 border" style={{maxWidth: '600px'}}>
             <i className="bi bi-check-circle-fill text-success display-1"></i>
-            <h3 className="fw-bold mt-3">Prueba Terminada</h3>
-            <p className="text-muted small">Los datos están listos en memoria para ser enviados.</p>
-            
-            <div className="alert alert-secondary text-start small">
-                <strong>Resumen de capturas:</strong><br/>
-                - Fotos totales: {expedienteFinal?.cantidadFotos}<br/>
-                - Peso del archivo: {(expedienteFinal?.archivoExcel?.size / 1024).toFixed(2)} KB
+            <h3 className="fw-bold mt-3">¡Prueba Finalizada!</h3>
+            <div className="alert alert-light border text-start my-4">
+                <strong>Resumen del Paquete:</strong>
+                <ul className="mb-0 small mt-2">
+                    <li>Fotos capturadas: {expedienteFinal?.cantidadFotos}</li>
+                    <li>Archivo Excel listo para Drive.</li>
+                </ul>
             </div>
-
             <button className="btn btn-primary btn-lg w-100 py-3 rounded-4 fw-bold shadow" onClick={enviarAlServidor} disabled={isSubmitting}>
-              {isSubmitting ? 'ENVIANDO A DRIVE...' : 'CONFIRMAR Y SUBIR'}
+              {isSubmitting ? 'SUBIENDO A DRIVE...' : 'CONFIRMAR Y SUBIR'}
             </button>
           </div>
         )}
       </main>
 
+      {/* --- MODAL PARA EVITAR ERROR DE ESLINT --- */}
+      {showModal && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} tabIndex="-1">
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content rounded-4 border-0 shadow-lg">
+              <div className="modal-header border-0 p-4 pb-0">
+                <h5 className="fw-bold m-0">Instrucciones del Examen</h5>
+                <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
+              </div>
+              <div className="modal-body p-4 text-center">
+                <p className="text-muted">Realice las fórmulas y el análisis directamente en la hoja de cálculo. Sus cambios se guardan automáticamente en tiempo real.</p>
+                <button className="btn btn-dark w-100 py-2 rounded-3 fw-bold" onClick={() => setShowModal(false)}>
+                  ENTENDIDO
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Footer />
-      {/* Elementos invisibles para el hook */}
+      {/* REFERENCIAS OCULTAS PARA EL HOOK */}
       <video ref={videoRef} autoPlay playsInline className="d-none" />
       <canvas ref={canvasRef} className="d-none" />
     </div>
