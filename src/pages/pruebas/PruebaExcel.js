@@ -22,7 +22,7 @@ function PruebaExcel() {
 
   const [isStarted, setIsStarted] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
-  const [showModal, setShowModal] = useState(false);
+  const [setShowModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [expedienteFinal, setExpedienteFinal] = useState(null);
 
