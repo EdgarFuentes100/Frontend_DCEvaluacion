@@ -35,14 +35,17 @@ function useFetch() {
     }).then(manejarRespuesta);
   }, [urlBase]);
 
-  const postFetch = useCallback((urlParcial, datos) => {
-    return fetch(urlBase + urlParcial, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(datos),
-      credentials: "include",
-    }).then(manejarRespuesta);
-  }, [urlBase]);
+const postFetch = useCallback((urlParcial, datos) => {
+  const esFormData = datos instanceof FormData;
+
+  return fetch(urlBase + urlParcial, {
+    method: "POST",
+    headers: esFormData ? undefined : { "Content-Type": "application/json" },
+    body: esFormData ? datos : JSON.stringify(datos),
+    credentials: "include",
+  }).then(manejarRespuesta);
+}, [urlBase]);
+
 
   const putFetch = (urlParcial, datos) => {
     const token = localStorage.getItem("tokenPerfil");
