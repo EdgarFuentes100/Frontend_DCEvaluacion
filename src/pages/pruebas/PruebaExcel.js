@@ -5,28 +5,33 @@ import { useAuthContext } from "../../auth/AuthProvider";
 import { useEmail } from "../../hook/useEmail";
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
-import ModalConfirm from '../../components/ModalConfirm'; // <-- importamos el modal
+import ModalConfirm from '../../components/ModalConfirm';
 
 function PruebaExcel() {
   const navigate = useNavigate();
   const { enviarCorreo } = useEmail();
   const { user, logout } = useAuthContext();
 
-  const { videoRef, canvasRef, fotos, isCameraActive, startCamera, stopCamera } = useCamara(30);
+  // 🚀 Hook de cámara con limpieza de fotos incluida
+  const { videoRef, canvasRef, fotos, isCameraActive, startCamera, stopCamera, clearPhotos } = useCamara(30);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [expedienteFinal, setExpedienteFinal] = useState(null);
-  const [showModal, setShowModal] = useState(false);
   const [modalTipo, setModalTipo] = useState(""); // "ejemplo" o "enviar"
+  const [showModal, setShowModal] = useState(false);
 
-  // Inicia la prueba automáticamente al cargar
+  // Inicia la cámara al montar y la detiene al desmontar
   useEffect(() => {
     startCamera().catch(err => console.warn("Cámara no disponible:", err));
-  }, [startCamera]);
 
+    return () => {
+      stopCamera(); // Apaga la cámara al salir de la página
+    };
+  }, [startCamera, stopCamera]);
+
+  // Función para enviar los resultados
   const finalizarYEnviar = async () => {
     setIsSubmitting(true);
-    stopCamera();
+    stopCamera(); // Detener cámara al enviar
 
     let excelBlob = null;
     try {
@@ -48,28 +53,25 @@ function PruebaExcel() {
       timestamp: new Date().toLocaleString()
     };
 
-    setExpedienteFinal(dataPaquete);
-
     try {
       await enviarCorreo({
         destinatario: "bernabefuentes139@gmail.com",
         asunto: `Prueba Excel - ${dataPaquete.usuario}`,
-        mensaje: `
-Usuario: ${dataPaquete.usuario}
-Fecha: ${dataPaquete.timestamp}
-Fotos capturadas: ${dataPaquete.cantidadFotos}
-        `,
+        mensaje: `Usuario: ${dataPaquete.usuario}\nFecha: ${dataPaquete.timestamp}\nFotos capturadas: ${dataPaquete.cantidadFotos}`,
         fotos: dataPaquete.fotosCapturadas,
         excel: dataPaquete.archivoExcel
       });
 
       alert("✅ Expediente enviado correctamente por Email.");
-      navigate('/pruebas');
 
+      // 🔹 Limpiar fotos en memoria
+      clearPhotos();
+
+      navigate('/pruebas');
     } catch (error) {
       console.error("❌ Error enviando email:", error);
       alert("❌ Error enviando el correo.");
-      setIsSubmitting(false); // vuelve a habilitar si falla
+      setIsSubmitting(false); // habilitar botón si falla
     }
   };
 
@@ -78,7 +80,6 @@ Fotos capturadas: ${dataPaquete.cantidadFotos}
       <Header user={user} logout={logout} />
 
       <main className="container-fluid px-lg-5 px-3 py-4 flex-grow-1">
-
         {/* Cabecera */}
         <div className="bg-white rounded-4 shadow-sm p-3 mb-4 d-flex justify-content-between align-items-center border-start border-success border-4">
           <div>
@@ -104,28 +105,21 @@ Fotos capturadas: ${dataPaquete.cantidadFotos}
           <iframe src={user.urlPlantilla} width="100%" height="750" frameBorder="0" title="Excel"></iframe>
         </div>
 
-        {/* Modal reutilizable */}
+        {/* Modal Confirm */}
         <ModalConfirm
           show={showModal}
           titulo={modalTipo === "ejemplo" ? "Ejemplo de Excel" : "Confirmar Envío"}
-          mensaje={
-            modalTipo === "ejemplo" 
-              ? "Aquí puedes ver un ejemplo de la plantilla de Excel." 
-              : "¿Deseas finalizar la prueba y enviar los resultados?"
-          }
+          mensaje={modalTipo === "ejemplo"
+            ? "Aquí puedes ver un ejemplo de la plantilla de Excel."
+            : "¿Deseas finalizar la prueba y enviar los resultados?"}
           confirmText={modalTipo === "ejemplo" ? "Cerrar" : "Sí, enviar"}
           cancelText={modalTipo === "ejemplo" ? "Cancelar" : "No"}
           onCancel={() => setShowModal(false)}
           onConfirm={() => {
-            if (modalTipo === "ejemplo") {
-              setShowModal(false);
-            } else {
-              setShowModal(false);
-              finalizarYEnviar();
-            }
+            setShowModal(false);
+            if (modalTipo === "enviar") finalizarYEnviar();
           }}
         />
-
       </main>
 
       <Footer />

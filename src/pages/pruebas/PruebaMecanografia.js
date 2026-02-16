@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useCamara } from '../../hook/useCamara'; 
 import { useAuthContext } from "../../auth/AuthProvider";
 import { useEmail } from '../../hook/useEmail';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
-import ModalConfirm from '../../components/ModalConfirm'; // ✅ modal reutilizable
+import ModalConfirm from '../../components/ModalConfirm'; // modal reutilizable
 
 function PruebaMecanografia() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuthContext();
   const { enviarCorreo } = useEmail();
 
@@ -38,7 +39,14 @@ function PruebaMecanografia() {
     "React es una biblioteca de JavaScript para interfaces de usuario."
   ];
 
-  // Inicia la prueba automáticamente al cargar
+  // --- Limpiar cámara al salir de la página ---
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, [location.pathname, stopCamera]);
+
+  // Inicia la prueba
   const iniciarPrueba = async () => {
     const textoAleatorio = textosMuestra[Math.floor(Math.random() * textosMuestra.length)];
     setTextoOriginal(textoAleatorio);
@@ -51,6 +59,7 @@ function PruebaMecanografia() {
     setTimeout(() => inputRef.current?.focus(), 50);
   };
 
+  // Cronómetro
   useEffect(() => {
     let interval = null;
     if (isActive && !isFinished) {
@@ -59,6 +68,7 @@ function PruebaMecanografia() {
     return () => clearInterval(interval);
   }, [isActive, isFinished]);
 
+  // Captura cambios del texto
   const handleTextChange = (e) => {
     if (!isActive || isFinished) return;
     const valor = e.target.value;
@@ -78,9 +88,15 @@ function PruebaMecanografia() {
       precision: Math.round(prec*10)/10
     });
 
-    if (valor.length >= textoOriginal.length) finalizarPrueba({ pulsacionesTotales: valor.length, errores, palabrasPorMinuto: Math.round(ppm), precision: Math.round(prec*10)/10 });
+    if (valor.length >= textoOriginal.length) finalizarPrueba({
+      pulsacionesTotales: valor.length,
+      errores,
+      palabrasPorMinuto: Math.round(ppm),
+      precision: Math.round(prec*10)/10
+    });
   };
 
+  // Finaliza prueba
   const finalizarPrueba = (statsFinales) => {
     setIsActive(false);
     setIsFinished(true);
@@ -99,7 +115,7 @@ function PruebaMecanografia() {
     console.log("🏁 Paquete final:", dataPaquete);
   };
 
-  // Enviar resultados con confirmación
+  // Enviar resultados
   const enviarResultados = async () => {
     if (!isFinished) return;
     setIsSubmitting(true);
