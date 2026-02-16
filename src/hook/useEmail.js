@@ -5,11 +5,11 @@ const useEmail = () => {
   const { postFetch } = useFetch();
 
   /**
-   * Enviar correo con fotos y/o Excel
+   * Enviar correo con fotos y/o Excel opcional
    * @param {string} destinatario - Email destino
    * @param {string} asunto - Asunto del correo
    * @param {string} mensaje - Texto opcional
-   * @param {Array<File|Blob|string>} fotos - Fotos (puede ser base64 o File/Blob)
+   * @param {Array<File|Blob|string>} fotos - Fotos opcionales (File, Blob o base64)
    * @param {File|Blob|null} excel - Excel opcional
    */
   const enviarCorreo = useCallback(
@@ -20,28 +20,29 @@ const useEmail = () => {
 
       const formData = new FormData();
 
-      // ===== Fotos =====
+      // ===== Fotos opcionales =====
       fotos.forEach((foto, index) => {
-        // Si es base64 lo convertimos a Blob
         let blob = foto;
+
+        // Si es base64, convertir a Blob
         if (typeof foto === "string" && foto.startsWith("data:")) {
           const parts = foto.split(",");
           const mime = parts[0].match(/:(.*?);/)[1];
           const binary = atob(parts[1]);
-          const array = [];
-          for (let i = 0; i < binary.length; i++) array.push(binary.charCodeAt(i));
-          blob = new Blob([new Uint8Array(array)], { type: mime });
+          const array = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) array[i] = binary.charCodeAt(i);
+          blob = new Blob([array], { type: mime });
         }
 
         formData.append("fotos", blob, `foto_${index + 1}.jpg`);
       });
 
-      // ===== Excel =====
+      // ===== Excel opcional =====
       if (excel instanceof Blob || excel instanceof File) {
         formData.append("excel", excel, "archivo.xlsx");
       }
 
-      // ===== Otros campos =====
+      // ===== Campos de texto =====
       formData.append("destinatario", destinatario);
       formData.append("asunto", asunto);
       formData.append("mensaje", mensaje);
@@ -58,7 +59,6 @@ const useEmail = () => {
 
       // ===== Enviar al backend =====
       const resp = await postFetch("email", formData);
-
       console.log("⬅️ RESPUESTA backend:", resp);
       return resp;
     },
