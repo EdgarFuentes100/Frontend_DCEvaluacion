@@ -5,13 +5,13 @@ import { useAuthContext } from "../../auth/AuthProvider";
 import { useEmail } from '../../hook/useEmail';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
+import ModalConfirm from '../../components/ModalConfirm'; // ✅ modal reutilizable
 
 function PruebaMecanografia() {
   const navigate = useNavigate();
   const { user, logout } = useAuthContext();
-  const { enviarCorreo } = useEmail(); // ✅ nuestro hook reutilizable
+  const { enviarCorreo } = useEmail();
 
-  // Hook automatizado: Lógica de fotos
   const { videoRef, canvasRef, fotos, isCameraActive, startCamera, stopCamera } = useCamara(30);
 
   const [textoOriginal, setTextoOriginal] = useState('');
@@ -28,6 +28,8 @@ function PruebaMecanografia() {
     precision: 100
   });
 
+  const [showModalEnviar, setShowModalEnviar] = useState(false); // modal de confirmación
+
   const inputRef = useRef(null);
 
   const textosMuestra = [
@@ -36,6 +38,7 @@ function PruebaMecanografia() {
     "React es una biblioteca de JavaScript para interfaces de usuario."
   ];
 
+  // Inicia la prueba automáticamente al cargar
   const iniciarPrueba = async () => {
     const textoAleatorio = textosMuestra[Math.floor(Math.random() * textosMuestra.length)];
     setTextoOriginal(textoAleatorio);
@@ -86,7 +89,7 @@ function PruebaMecanografia() {
     const dataPaquete = {
       usuario: { id: user.id, nombre: user.nombre },
       resultados: statsFinales || estadisticas,
-      fotos: fotos, // ✅ todas las fotos
+      fotos: fotos,
       textoOriginal,
       textoUsuario,
       tiempoSegundos: Math.round(tiempoTranscurrido),
@@ -96,7 +99,7 @@ function PruebaMecanografia() {
     console.log("🏁 Paquete final:", dataPaquete);
   };
 
-  // ===== Envío con el hook useEmail =====
+  // Enviar resultados con confirmación
   const enviarResultados = async () => {
     if (!isFinished) return;
     setIsSubmitting(true);
@@ -117,8 +120,8 @@ ${textoOriginal}
 Texto ingresado:
 ${textoUsuario}
         `,
-        fotos: fotos, // array de fotos Blob/File
-        excel: null // opcional: podrías poner aquí un excel si tuvieras
+        fotos: fotos,
+        excel: null
       });
       alert("✅ Prueba enviada correctamente por email.");
       navigate('/pruebas');
@@ -204,7 +207,11 @@ ${textoUsuario}
                     <i className="bi bi-camera-fill me-2"></i>
                     {fotos.length} fotos listas para enviar.
                   </div>
-                  <button className="btn btn-success w-100 py-3 rounded-4 fw-bold shadow" onClick={enviarResultados} disabled={isSubmitting}>
+                  <button
+                    className="btn btn-success w-100 py-3 rounded-4 fw-bold shadow"
+                    onClick={() => setShowModalEnviar(true)}
+                    disabled={isSubmitting}
+                  >
                     {isSubmitting ? 'ENVIANDO...' : 'CONFIRMAR Y ENVIAR'}
                   </button>
                 </div>
@@ -213,6 +220,21 @@ ${textoUsuario}
           </div>
         </div>
       </main>
+
+      {/* Modal de confirmación */}
+      <ModalConfirm
+        show={showModalEnviar}
+        titulo="Confirmar Envío"
+        mensaje={`¿Deseas enviar los resultados de la prueba de mecanografía ahora?`}
+        contenidoExtra={null}
+        confirmText="Sí, enviar"
+        cancelText="Cancelar"
+        onCancel={() => setShowModalEnviar(false)}
+        onConfirm={async () => {
+          setShowModalEnviar(false);
+          await enviarResultados();
+        }}
+      />
 
       <Footer />
       <video ref={videoRef} autoPlay playsInline className="d-none" />

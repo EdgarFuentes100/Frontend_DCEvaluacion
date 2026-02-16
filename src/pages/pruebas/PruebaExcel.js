@@ -5,6 +5,7 @@ import { useAuthContext } from "../../auth/AuthProvider";
 import { useEmail } from "../../hook/useEmail";
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
+import ModalConfirm from '../../components/ModalConfirm'; // <-- importamos el modal
 
 function PruebaExcel() {
   const navigate = useNavigate();
@@ -13,28 +14,18 @@ function PruebaExcel() {
 
   const { videoRef, canvasRef, fotos, isCameraActive, startCamera, stopCamera } = useCamara(30);
 
-  const [isFinished, setIsFinished] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [expedienteFinal, setExpedienteFinal] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [modalTipo, setModalTipo] = useState(""); // "ejemplo" o "enviar"
 
   // Inicia la prueba automáticamente al cargar
   useEffect(() => {
-    const iniciar = async () => {
-      try {
-        await startCamera();
-      } catch (error) {
-        console.warn("Cámara no disponible:", error);
-      }
-    };
-    iniciar();
+    startCamera().catch(err => console.warn("Cámara no disponible:", err));
   }, [startCamera]);
 
-  // FINALIZAR + ENVIAR en un solo botón
   const finalizarYEnviar = async () => {
-    if (isSubmitting) return;
-
-    setIsSubmitting(true); // Botón queda cargando
+    setIsSubmitting(true);
     stopCamera();
 
     let excelBlob = null;
@@ -58,7 +49,6 @@ function PruebaExcel() {
     };
 
     setExpedienteFinal(dataPaquete);
-    setIsFinished(true);
 
     try {
       await enviarCorreo({
@@ -79,8 +69,7 @@ Fotos capturadas: ${dataPaquete.cantidadFotos}
     } catch (error) {
       console.error("❌ Error enviando email:", error);
       alert("❌ Error enviando el correo.");
-    } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false); // vuelve a habilitar si falla
     }
   };
 
@@ -99,23 +88,15 @@ Fotos capturadas: ${dataPaquete.cantidadFotos}
             </span>
           </div>
 
-          {!isFinished && (
-            <div className="d-flex gap-2">
-              {/* Botón Ver Ejemplo */}
-              <button className="btn btn-dark fw-bold rounded-3" onClick={() => setShowModal(true)}>
-                VER EJEMPLO
-              </button>
+          <div className="d-flex gap-2">
+            <button className="btn btn-dark fw-bold rounded-3" onClick={() => { setModalTipo("ejemplo"); setShowModal(true); }}>
+              VER EJEMPLO
+            </button>
 
-              {/* Botón FINALIZAR + ENVIAR */}
-              <button 
-                className="btn btn-danger fw-bold rounded-3 shadow"
-                onClick={finalizarYEnviar}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'ENVIANDO...' : 'FINALIZAR Y ENVIAR'}
-              </button>
-            </div>
-          )}
+            <button className="btn btn-danger fw-bold rounded-3 shadow" onClick={() => { setModalTipo("enviar"); setShowModal(true); }} disabled={isSubmitting}>
+              {isSubmitting ? 'ENVIANDO...' : 'FINALIZAR Y ENVIAR'}
+            </button>
+          </div>
         </div>
 
         {/* Excel iframe */}
@@ -123,25 +104,27 @@ Fotos capturadas: ${dataPaquete.cantidadFotos}
           <iframe src={user.urlPlantilla} width="100%" height="750" frameBorder="0" title="Excel"></iframe>
         </div>
 
-        {/* Modal de ejemplo */}
-        {showModal && (
-          <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-            <div className="modal-dialog modal-lg">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">Ejemplo de Excel</h5>
-                  <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
-                </div>
-                <div className="modal-body">
-                  <iframe src={user.urlPlantilla} width="100%" height="400" frameBorder="0" title="Ejemplo Excel"></iframe>
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cerrar</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Modal reutilizable */}
+        <ModalConfirm
+          show={showModal}
+          titulo={modalTipo === "ejemplo" ? "Ejemplo de Excel" : "Confirmar Envío"}
+          mensaje={
+            modalTipo === "ejemplo" 
+              ? "Aquí puedes ver un ejemplo de la plantilla de Excel." 
+              : "¿Deseas finalizar la prueba y enviar los resultados?"
+          }
+          confirmText={modalTipo === "ejemplo" ? "Cerrar" : "Sí, enviar"}
+          cancelText={modalTipo === "ejemplo" ? "Cancelar" : "No"}
+          onCancel={() => setShowModal(false)}
+          onConfirm={() => {
+            if (modalTipo === "ejemplo") {
+              setShowModal(false);
+            } else {
+              setShowModal(false);
+              finalizarYEnviar();
+            }
+          }}
+        />
 
       </main>
 
