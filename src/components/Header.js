@@ -1,10 +1,10 @@
 import { useNavigate } from "react-router-dom";
 
-const Header = ({ user, logout }) => {
+const Header = ({ user, logout, showLogout = true }) => {
     const navigate = useNavigate();
 
     const handleLogout = () => {
-        logout();
+        logout?.();
         navigate("/login", { replace: true });
     };
 
@@ -22,13 +22,26 @@ const Header = ({ user, logout }) => {
                 <div className="d-flex align-items-center gap-3">
                     {user && (
                         <div className="text-end text-white d-none d-md-block me-2">
-                            <div className="fw-bold small">{user.nombreCompleto || user.email}</div>
-                            <div className="text-primary" style={{ fontSize: '10px', fontWeight: 800 }}>CANDIDATO</div>
+                            <div className="fw-bold small">
+                                {user.nombreCompleto || user.email}
+                            </div>
+                            <div 
+                                className="text-primary" 
+                                style={{ fontSize: '10px', fontWeight: 800 }}
+                            >
+                                CANDIDATO
+                            </div>
                         </div>
                     )}
-                    <button className="btn btn-danger fw-bold rounded-3 px-4 shadow-sm" onClick={handleLogout}>
-                        SALIR
-                    </button>
+
+                    {showLogout && (
+                        <button 
+                            className="btn btn-danger fw-bold rounded-3 px-4 shadow-sm" 
+                            onClick={handleLogout}
+                        >
+                            SALIR
+                        </button>
+                    )}
                 </div>
             </div>
         </nav>

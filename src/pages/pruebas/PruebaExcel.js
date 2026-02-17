@@ -77,7 +77,7 @@ function PruebaExcel() {
 
   return (
     <div className="min-vh-100 d-flex flex-column" style={{ backgroundColor: "#f1f3f5" }}>
-      <Header user={user} logout={logout} />
+      <Header user={user} logout={logout} showLogout={false} />
 
       <main className="container-fluid px-lg-5 px-3 py-4 flex-grow-1">
         {/* Cabecera */}

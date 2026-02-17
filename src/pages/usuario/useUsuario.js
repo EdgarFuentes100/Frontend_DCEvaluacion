@@ -29,7 +29,7 @@ const useUsuarios = () => {
         ? usuario
         : {
             ...ModelUsuario(),
-            duracionPinMin: 60 // valor por defecto
+            duracionPinMin: 60
           }
     );
     setErrores({});
@@ -41,13 +41,32 @@ const useUsuarios = () => {
     setUsuarioSeleccionado(null);
   };
 
-  /* ===== HANDLE CHANGE (minutos como número) ===== */
+  /* ===== HANDLE CHANGE ===== */
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    let { name, value } = e.target;
+
+    // ===== FORMATEO DUI =====
+    if (name === "dui") {
+      // eliminar todo lo que no sea número
+      value = value.replace(/\D/g, "");
+
+      // máximo 9 dígitos
+      if (value.length > 9) return;
+
+      // agregar guion automático
+      if (value.length > 8) {
+        value = value.slice(0, 8) + "-" + value.slice(8);
+      }
+    }
+
+    // duración como número
+    if (name === "duracionPinMin") {
+      value = Number(value);
+    }
 
     setUsuarioSeleccionado((prev) => ({
       ...prev,
-      [name]: name === "duracionPinMin" ? Number(value) : value
+      [name]: value
     }));
   };
 
@@ -55,10 +74,31 @@ const useUsuarios = () => {
   const handleContinue = () => {
     const err = {};
 
-    if (!usuarioSeleccionado.nombreCompleto) err.nombreCompleto = true;
-    if (!usuarioSeleccionado.dui) err.dui = true;
-    if (!usuarioSeleccionado.idRol) err.idRol = true;
+    const duiRegex = /^\d{8}-\d{1}$/;
+    const nombreRegex = /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/;
 
+    // Nombre obligatorio y solo letras
+    if (
+      !usuarioSeleccionado.nombreCompleto ||
+      !nombreRegex.test(usuarioSeleccionado.nombreCompleto)
+    ) {
+      err.nombreCompleto = true;
+    }
+
+    // DUI obligatorio y formato correcto
+    if (
+      !usuarioSeleccionado.dui ||
+      !duiRegex.test(usuarioSeleccionado.dui)
+    ) {
+      err.dui = true;
+    }
+
+    // Rol obligatorio
+    if (!usuarioSeleccionado.idRol) {
+      err.idRol = true;
+    }
+
+    // Duración válida
     if (
       !usuarioSeleccionado.duracionPinMin ||
       usuarioSeleccionado.duracionPinMin <= 0
@@ -66,11 +106,13 @@ const useUsuarios = () => {
       err.duracionPinMin = true;
     }
 
+    // PIN obligatorio al crear
     if (operacion === 1 && !usuarioSeleccionado.pinCode) {
       err.pinCode = true;
     }
 
     setErrores(err);
+
     if (Object.keys(err).length > 0) return;
 
     if (operacion === 1) crearUsuario();

@@ -157,7 +157,7 @@ ${textoUsuario}
 
   return (
     <div className="min-vh-100 d-flex flex-column" style={{ backgroundColor: "#f1f3f5" }}>
-      <Header user={user} logout={logout} />
+      <Header user={user} logout={logout} showLogout={false}  />
 
       <main className="container-fluid px-lg-5 px-3 py-4 flex-grow-1">
         <div className="bg-white rounded-4 shadow-sm p-3 mb-4 d-flex justify-content-between align-items-center border-start border-primary border-4">
@@ -167,7 +167,6 @@ ${textoUsuario}
               {isCameraActive ? 'CÁMARA GRABANDO' : 'CÁMARA INACTIVA'}
             </span>
           </div>
-          <button className="btn btn-outline-dark btn-sm rounded-3" onClick={()=>navigate('/pruebas')}>SALIR</button>
         </div>
 
         <div className="row g-4">
