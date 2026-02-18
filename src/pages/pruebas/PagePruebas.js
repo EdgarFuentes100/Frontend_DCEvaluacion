@@ -32,7 +32,7 @@ const PagePruebas = () => {
             id: 3,
             titulo: "Perfil Psicológico",
             descripcion: "Test de aptitudes y personalidad.",
-            ruta: "/pruebas/psicologica",
+            ruta: "/psicologica",
             imagen: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&q=80&w=400",
             color: "#8b5cf6"
         }

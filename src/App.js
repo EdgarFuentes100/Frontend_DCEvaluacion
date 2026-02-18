@@ -6,6 +6,7 @@ import Dashboard from "./pages/Dashboard";
 import PagePruebas from "./pages/pruebas/PagePruebas";
 import PruebaMecanografia from "./pages/pruebas/PruebaMecanografia";
 import PruebaExcel from "./pages/pruebas/PruebaExcel";
+import PruebaPsicologica from "./pages/pruebas/PruebaPsicologica";
 
 function App() {
   const { user } = useAuthContext();
@@ -70,6 +71,19 @@ function App() {
           )
         }
       />
+
+
+      <Route
+        path="/psicologica/*"
+        element={
+          user && user.rol === "Candidato" ? (
+            <PruebaPsicologica />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+    
 
       {/* DEFAULT */}
       <Route
