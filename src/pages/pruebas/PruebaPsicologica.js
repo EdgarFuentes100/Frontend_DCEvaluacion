@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { usePreguntas } from '../../hook/usePreguntas';
 import { useAuthContext } from "../../auth/AuthProvider";
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 
 function PruebaPsicologica() {
-  const navigate = useNavigate();
   const { user, logout } = useAuthContext();
 
   const idPrueba = 3; // psicológica
