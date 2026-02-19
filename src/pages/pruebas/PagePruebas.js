@@ -60,17 +60,19 @@ const PagePruebas = () => {
             if (res.ok) {
 
                 const intentoData = {
-                    idIntento: res.idIntento,
-                    idUsuario: user.idUsuario,
+                    idIntento: res.datos.idIntento,
+                    idUsuario: user.id,
                     idPrueba: pruebaSeleccionada.id
                 };
 
                 localStorage.setItem("intento", JSON.stringify(intentoData));
 
+                console.log("Intento guardado:", intentoData);
+
                 setShowModal(false);
                 navigate(pruebaSeleccionada.ruta);
-
-            } else {
+            }
+            else {
 
                 const mensaje =
                     res.msg ||
