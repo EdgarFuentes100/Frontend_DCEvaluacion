@@ -3,13 +3,16 @@ import { useAuthContext } from "../../auth/AuthProvider";
 import { useState } from "react";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
+import { useFetch } from "../../api/useFetch";
 
 const PagePruebas = () => {
     const { user, logout } = useAuthContext();
     const navigate = useNavigate();
+    const { postFetch } = useFetch();
 
     const [showModal, setShowModal] = useState(false);
     const [pruebaSeleccionada, setPruebaSeleccionada] = useState(null);
+    const [errorMensaje, setErrorMensaje] = useState("");
 
     const pruebas = [
         {
@@ -43,15 +46,51 @@ const PagePruebas = () => {
         setShowModal(true);
     };
 
-    const confirmarInicio = () => {
-        if (pruebaSeleccionada) {
-            navigate(pruebaSeleccionada.ruta);
+    const confirmarInicio = async () => {
+        if (!pruebaSeleccionada) return;
+
+        try {
+            const res = await postFetch("intento", {
+                idUsuario: user.id,
+                idPrueba: pruebaSeleccionada.id
+            });
+
+            console.log("Respuesta backend:", res);
+
+            if (res.ok) {
+
+                const intentoData = {
+                    idIntento: res.idIntento,
+                    idUsuario: user.idUsuario,
+                    idPrueba: pruebaSeleccionada.id
+                };
+
+                localStorage.setItem("intento", JSON.stringify(intentoData));
+
+                setShowModal(false);
+                navigate(pruebaSeleccionada.ruta);
+
+            } else {
+
+                const mensaje =
+                    res.msg ||
+                    res.datos?.msg ||
+                    "Ya alcanzaste el máximo de intentos.";
+
+                setShowModal(false); // cerramos modal normal
+                setErrorMensaje(mensaje); // 🔴 mostramos error bonito
+            }
+
+        } catch (error) {
+            console.error("Error real:", error);
+            setShowModal(false);
+            setErrorMensaje("Error de conexión con el servidor.");
         }
     };
 
     return (
         <div className="min-vh-100 d-flex flex-column" style={{ backgroundColor: "#f1f3f5" }}>
-            
+
             <Header user={user} logout={logout} />
 
             <main className="container-fluid px-lg-5 px-3 py-4 flex-grow-1">
@@ -66,17 +105,17 @@ const PagePruebas = () => {
                 <div className="row g-4 justify-content-center">
                     {pruebas.map(prueba => (
                         <div key={prueba.id} className="col-12 col-md-6 col-lg-4">
-                            <div 
+                            <div
                                 className="card h-100 border-0 shadow-lg rounded-5 overflow-hidden"
                                 style={{ cursor: 'pointer', transition: '0.3s' }}
                                 onClick={() => abrirModal(prueba)}
                             >
                                 <div style={{ height: '8px', background: prueba.color }}></div>
-                                <img 
-                                    src={prueba.imagen} 
-                                    alt={prueba.titulo} 
-                                    className="w-100 object-fit-cover" 
-                                    style={{ height: '180px' }} 
+                                <img
+                                    src={prueba.imagen}
+                                    alt={prueba.titulo}
+                                    className="w-100 object-fit-cover"
+                                    style={{ height: '180px' }}
                                 />
                                 <div className="card-body p-4 text-center">
                                     <h3 className="fw-bold mb-3">{prueba.titulo}</h3>
@@ -91,20 +130,16 @@ const PagePruebas = () => {
                 </div>
             </main>
 
-            {/* MODAL DE CONFIRMACIÓN */}
+            {/* MODAL CONFIRMAR */}
             {showModal && pruebaSeleccionada && (
-                <div 
+                <div
                     className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
                     style={{ backgroundColor: "rgba(0,0,0,0.6)", zIndex: 1050 }}
                 >
                     <div className="bg-white p-4 rounded-4 shadow-lg text-center" style={{ width: "400px" }}>
-                        <h4 className="fw-bold mb-3">
-                            Confirmar Inicio
-                        </h4>
+                        <h4 className="fw-bold mb-3">Confirmar Inicio</h4>
 
-                        <p className="mb-3">
-                            Estás a punto de iniciar:
-                        </p>
+                        <p className="mb-3">Estás a punto de iniciar:</p>
 
                         <h5 className="fw-bold text-primary mb-4">
                             {pruebaSeleccionada.titulo}
@@ -115,20 +150,45 @@ const PagePruebas = () => {
                         </p>
 
                         <div className="d-flex gap-3">
-                            <button 
+                            <button
                                 className="btn btn-secondary w-50 rounded-3"
                                 onClick={() => setShowModal(false)}
                             >
                                 Cancelar
                             </button>
 
-                            <button 
+                            <button
                                 className="btn btn-success w-50 rounded-3 fw-bold"
                                 onClick={confirmarInicio}
                             >
                                 Sí, iniciar
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 🔴 MODAL ERROR PROFESIONAL */}
+            {errorMensaje && (
+                <div
+                    className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
+                    style={{ backgroundColor: "rgba(0,0,0,0.7)", zIndex: 2000 }}
+                >
+                    <div className="bg-white p-4 rounded-4 shadow-lg text-center" style={{ width: "400px" }}>
+                        <h5 className="fw-bold text-danger mb-3">
+                            ⚠ No puedes iniciar la prueba
+                        </h5>
+
+                        <p className="text-danger mb-4">
+                            {errorMensaje}
+                        </p>
+
+                        <button
+                            className="btn btn-danger w-100"
+                            onClick={() => setErrorMensaje("")}
+                        >
+                            Entendido
+                        </button>
                     </div>
                 </div>
             )}
