@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { usePreguntas } from '../../hook/usePreguntas';
 import { useRespuestas } from '../../hook/useRespuestas';
 import { useAuthContext } from "../../auth/AuthProvider";
@@ -50,10 +50,8 @@ function PruebaPsicologica() {
   });
 
   const [isTimerActive, setIsTimerActive] = useState(true);
-  const [ultimoGuardado, setUltimoGuardado] = useState(Date.now());
   const [paginaActual, setPaginaActual] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModalEnviar, setShowModalEnviar] = useState(false);
 
   // Obtener intento
@@ -74,55 +72,17 @@ function PruebaPsicologica() {
       }
     };
     iniciarCamara();
-  }, [startCamera]); // ✅ Dependencia incluida
+  }, [startCamera]);
 
   // Formatear tiempo
-  const formatearTiempo = (segundos) => {
+  const formatearTiempo = useCallback((segundos) => {
     const mins = Math.floor(segundos / 60);
     const segs = segundos % 60;
     return `${mins.toString().padStart(2,'0')}:${segs.toString().padStart(2,'0')}`;
-  };
-
-  // Guardar tiempo cada segundo
-  useEffect(() => {
-    if (isTimerActive && !isFinished) {
-      const interval = setInterval(() => {
-        localStorage.setItem('tiempoRestantePsicologica', tiempoRestante.toString());
-        localStorage.setItem('tiempoTimestampPsicologica', Date.now().toString());
-        setUltimoGuardado(Date.now());
-      }, 1000);
-
-      return () => clearInterval(interval);
-    }
-  }, [tiempoRestante, isTimerActive, isFinished]);
-
-  // Temporizador
-  useEffect(() => {
-    let interval = null;
-    if (isTimerActive && tiempoRestante > 0 && !isFinished) {
-      interval = setInterval(() => {
-        setTiempoRestante(prev => {
-          const nuevoTiempo = prev - 1;
-          setTiempoFormateado(formatearTiempo(nuevoTiempo));
-
-          if (nuevoTiempo <= 0) {
-            clearInterval(interval);
-            finalizarPorTiempo();
-          }
-
-          return nuevoTiempo;
-        });
-      }, 1000);
-    }
-
-    return () => { if (interval) clearInterval(interval); };
-  }, [isTimerActive, isFinished]);
-
-  // Verificar todas las preguntas
-  const todasRespondidas = respuestas.length === preguntas.length;
+  }, []);
 
   // Finalizar por tiempo
-  const finalizarPorTiempo = () => {
+  const finalizarPorTiempo = useCallback(() => {
     console.log("⏰ Tiempo agotado");
     setIsTimerActive(false);
     stopCamera();
@@ -131,7 +91,37 @@ function PruebaPsicologica() {
 
     localStorage.removeItem('tiempoRestantePsicologica');
     localStorage.removeItem('tiempoTimestampPsicologica');
-  };
+  }, [stopCamera]);
+
+  // Guardar tiempo cada segundo
+  useEffect(() => {
+    if (isTimerActive && !isFinished) {
+      const interval = setInterval(() => {
+        localStorage.setItem('tiempoRestantePsicologica', tiempoRestante.toString());
+        localStorage.setItem('tiempoTimestampPsicologica', Date.now().toString());
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [tiempoRestante, isTimerActive, isFinished]);
+
+  // Temporizador
+  useEffect(() => {
+    if (!isTimerActive || isFinished) return;
+
+    const interval = setInterval(() => {
+      setTiempoRestante(prev => {
+        const nuevoTiempo = prev - 1;
+        setTiempoFormateado(formatearTiempo(nuevoTiempo));
+        if (nuevoTiempo <= 0) {
+          clearInterval(interval);
+          finalizarPorTiempo();
+        }
+        return nuevoTiempo;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isTimerActive, isFinished, formatearTiempo, finalizarPorTiempo]);
 
   // Preparar datos de envío
   const prepararDatosEnvio = () => ({
@@ -151,7 +141,6 @@ function PruebaPsicologica() {
 
   // Enviar resultados
   const enviarResultados = async () => {
-    setIsSubmitting(true);
     try {
       const datos = prepararDatosEnvio();
       console.log("📤 Enviando resultados", datos);
@@ -175,7 +164,6 @@ function PruebaPsicologica() {
       console.error("❌ Error al enviar:", error);
       alert("❌ Error al enviar los resultados");
     } finally {
-      setIsSubmitting(false);
       setShowModalEnviar(false);
     }
   };
@@ -207,11 +195,10 @@ function PruebaPsicologica() {
   const totalPaginas = Math.ceil(preguntas.length / preguntasPorPagina);
   const inicio = paginaActual * preguntasPorPagina;
   const preguntasActuales = preguntas.slice(inicio, inicio + preguntasPorPagina);
-
-  const paginaCompleta = preguntasActuales.every(p => respuestas.find(r => r.idPregunta === p.idPregunta));
   const preguntasRespondidas = respuestas.length;
+  const todasRespondidas = preguntasRespondidas === preguntas.length;
+  const paginaCompleta = preguntasActuales.every(p => respuestas.find(r => r.idPregunta === p.idPregunta));
   const progreso = (preguntasRespondidas / preguntas.length) * 100;
-
   const tiempoTranscurrido = 2400 - tiempoRestante;
   const minutosTranscurridos = Math.floor(tiempoTranscurrido / 60);
   const segundosTranscurridos = tiempoTranscurrido % 60;
@@ -287,7 +274,6 @@ function PruebaPsicologica() {
           <div className="col-12">
             <div className="bg-white rounded-3 shadow-sm p-3 d-flex justify-content-between">
               <button className="btn btn-outline-secondary px-4" onClick={() => setPaginaActual(p => Math.max(0,p-1))} disabled={paginaActual===0}>← Anterior</button>
-
               {paginaActual === totalPaginas-1 ? (
                 todasRespondidas ? (
                   <button className="btn btn-success btn-lg px-5" onClick={() => setShowModalEnviar(true)}>FINALIZAR PRUEBA</button>
@@ -302,7 +288,6 @@ function PruebaPsicologica() {
         </div>
       </main>
 
-      {/* Modal */}
       <ModalConfirm
         show={showModalEnviar}
         titulo="Confirmar Envío - Prueba Psicológica"
