@@ -15,11 +15,11 @@ function PruebaPsicologica() {
   const idPrueba = 3; // psicológica
   const { preguntas } = usePreguntas(idPrueba);
 
-  // 🔥 Obtener intento desde localStorage
+  // Obtener intento desde localStorage
   const intento = JSON.parse(localStorage.getItem("intento"));
   const idIntento = intento?.idIntento;
 
-  // 🔥 Hook de respuestas conectado a BD
+  // Hook de respuestas conectado a BD
   const { respuestas, guardarRespuesta } = useRespuestas(idIntento);
 
   const [paginaActual, setPaginaActual] = useState(0);
@@ -39,16 +39,34 @@ function PruebaPsicologica() {
     </div>
   );
 
-  //  Paginación
+  // Paginación
   const preguntasPorPagina = 10;
   const totalPaginas = Math.ceil(preguntas.length / preguntasPorPagina);
   const inicio = paginaActual * preguntasPorPagina;
   const fin = inicio + preguntasPorPagina;
   const preguntasActuales = preguntas.slice(inicio, fin);
 
-  // Guardar respuesta en BD
-  const handleChange = (idPregunta, valor) => {
-    guardarRespuesta(idPregunta, valor);
+  // ✅ Guardar respuesta en BD con peso y porcentaje calculado
+  const handleChange = (idPregunta, valorRespuesta) => {
+    // Buscar la pregunta para obtener pesoImportancia y maximo
+    const pregunta = preguntas.find(p => p.idPregunta === idPregunta);
+    
+    if (!pregunta) return;
+    
+    // Calcular peso y porcentaje
+    const peso = pregunta.pesoImportancia * valorRespuesta; // pesoImportancia * respuesta
+    const porcentaje = (peso / pregunta.maximo) * 100; // (peso / maximo) * 100
+    
+    console.log(`📊 Pregunta ${idPregunta}:`, {
+      respuesta: valorRespuesta,
+      pesoImportancia: pregunta.pesoImportancia,
+      maximo: pregunta.maximo,
+      pesoCalculado: peso,
+      porcentajeCalculado: Math.round(porcentaje * 100) / 100 + '%'
+    });
+    
+    // Guardar con peso y porcentaje calculados
+    guardarRespuesta(idPregunta, valorRespuesta, peso, porcentaje);
   };
 
   const siguiente = () => {
@@ -66,7 +84,6 @@ function PruebaPsicologica() {
   };
 
   const finalizar = async () => {
-
     if (!pruebaCompleta) {
       alert("Debes responder todas las preguntas antes de finalizar.");
       return;
@@ -79,32 +96,29 @@ function PruebaPsicologica() {
 
     try {
       console.log("Finalizando intento:", idIntento);
+      console.log("Respuestas guardadas:", respuestas);
 
       const ok = await finalizarIntento(idIntento);
 
       if (ok) {
         console.log("Intento finalizado correctamente");
-
         alert("Prueba finalizada correctamente");
 
         // limpiar localStorage
         localStorage.removeItem("intento");
 
         // redirigir
-        navigate("/pruebas"); // cambia la ruta si quieres
-
+        navigate("/pruebas");
       } else {
         alert("Error al finalizar la prueba.");
       }
-
     } catch (error) {
-      console.error(" Error real:", error);
+      console.error("Error real:", error);
       alert("Error del servidor.");
     }
   };
 
-
-  // 🔎 Verificaciones
+  // Verificaciones
   const paginaCompleta = preguntasActuales.every(
     p => respuestas.find(r => r.idPregunta === p.idPregunta)
   );
@@ -121,7 +135,6 @@ function PruebaPsicologica() {
       <Header user={user} logout={logout} showLogout={false} />
 
       <main className="container-fluid px-4 px-xl-5 py-4 flex-grow-1">
-
         {/* PROGRESO */}
         <div className="row mb-4">
           <div className="col-12">
@@ -159,27 +172,27 @@ function PruebaPsicologica() {
 
         {/* PREGUNTAS */}
         <div className="row g-4">
-          {preguntasActuales.map((pregunta, index) => (
-            <div key={pregunta.idPregunta} className="col-xl-6">
-              <div className="bg-white rounded-3 shadow-sm h-100 p-4">
-                <div className="d-flex gap-3">
-                  <div
-                    className="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                    style={{ width: "40px", height: "40px" }}
-                  >
-                    <span className="fw-bold">{inicio + index + 1}</span>
-                  </div>
+          {preguntasActuales.map((pregunta, index) => {
+            const respuestaGuardada = respuestas.find(
+              r => r.idPregunta === pregunta.idPregunta
+            );
+            
+            return (
+              <div key={pregunta.idPregunta} className="col-xl-6">
+                <div className="bg-white rounded-3 shadow-sm h-100 p-4">
+                  <div className="d-flex gap-3">
+                    <div
+                      className="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                      style={{ width: "40px", height: "40px" }}
+                    >
+                      <span className="fw-bold">{inicio + index + 1}</span>
+                    </div>
 
-                  <div className="flex-grow-1">
-                    <p className="fw-medium mb-4">{pregunta.pregunta}</p>
+                    <div className="flex-grow-1">
+                      <p className="fw-medium mb-4">{pregunta.pregunta}</p>
 
-                    <div className="d-flex justify-content-between bg-light rounded-3 p-3">
-                      {[1, 2, 3, 4, 5].map((valor) => {
-                        const respuestaGuardada = respuestas.find(
-                          r => r.idPregunta === pregunta.idPregunta
-                        );
-
-                        return (
+                      <div className="d-flex justify-content-between bg-light rounded-3 p-3">
+                        {[1, 2, 3, 4, 5].map((valor) => (
                           <label
                             key={valor}
                             className="d-flex flex-column align-items-center gap-2"
@@ -204,21 +217,21 @@ function PruebaPsicologica() {
                               {valor}
                             </span>
                           </label>
-                        );
-                      })}
-                    </div>
+                        ))}
+                      </div>
 
-                    <div className="d-flex justify-content-between mt-2 px-2">
-                      <span className="small text-muted">Nada de acuerdo</span>
-                      <span className="small text-muted">
-                        Totalmente de acuerdo
-                      </span>
+                      <div className="d-flex justify-content-between mt-2 px-2">
+                        <span className="small text-muted">Nada de acuerdo</span>
+                        <span className="small text-muted">
+                          Totalmente de acuerdo
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* NAVEGACIÓN */}

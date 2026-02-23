@@ -8,6 +8,7 @@ const usePreguntas = (idPrueba) => {
   const listarPreguntas = useCallback(async () => {
     const res = await getFetch(`preguntas/${idPrueba}`);
     if (res.ok) setPreguntas(res.datos);
+    console.log("hola", res.datos);
   }, [getFetch, idPrueba]);
 
   useEffect(() => {
