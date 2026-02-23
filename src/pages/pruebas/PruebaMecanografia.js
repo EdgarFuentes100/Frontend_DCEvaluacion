@@ -8,6 +8,13 @@ import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import ModalConfirm from '../../components/ModalConfirm';
 
+// ✅ Array de textos fuera del componente para evitar error de dependencias
+const textosMuestra = [
+  "La programación es una habilidad esencial en la era digital...",
+  "JavaScript es un lenguaje versátil que se utiliza para crear páginas web...",
+  "React es una biblioteca de JavaScript para construir interfaces de usuario..."
+];
+
 function PruebaMecanografia() {
   const navigate = useNavigate();
   const { user } = useAuthContext();
@@ -31,11 +38,6 @@ function PruebaMecanografia() {
   const [showModalEnviar, setShowModalEnviar] = useState(false);
 
   const TIEMPO_MAXIMO = 10; // segundos
-  const textosMuestra = [
-    "La programación es una habilidad esencial en la era digital...",
-    "JavaScript es un lenguaje versátil que se utiliza para crear páginas web...",
-    "React es una biblioteca de JavaScript para construir interfaces de usuario..."
-  ];
 
   // --- Iniciar prueba ---
   const iniciarPrueba = useCallback(async () => {
@@ -169,6 +171,7 @@ ${textoUsuario}`,
     }
   };
 
+  // --- Renderizar texto con colores según errores ---
   const renderTextoConColores = () => textoOriginal.split('').map((l, i) => {
     let clase = 'text-muted';
     if (i < textoUsuario.length) clase = textoUsuario[i] === l ? 'text-success fw-bold' : 'text-danger bg-danger bg-opacity-10';
@@ -178,12 +181,12 @@ ${textoUsuario}`,
   const formatTime = (segundos) => {
     const min = Math.floor(segundos / 60);
     const sec = Math.floor(segundos % 60);
-    return `${min.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
+    return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
   };
 
   return (
     <div className="min-vh-100 d-flex flex-column" style={{ backgroundColor: "#f1f3f5" }}>
-      <Header user={user} showLogout={false} logout={() => {}} />
+      <Header user={user} showLogout={false} logout={() => { }} />
       <main className="container-fluid px-lg-5 px-3 py-4 flex-grow-1">
         <div className="bg-white rounded-4 shadow-sm p-3 mb-4 d-flex justify-content-between align-items-center border-start border-primary border-4">
           <div>
@@ -193,10 +196,11 @@ ${textoUsuario}`,
             </span>
           </div>
         </div>
+
         <div className="row g-4">
           <div className="col-lg-8">
             <div className="bg-white rounded-5 shadow-sm p-4 h-100">
-              <div className="p-4 bg-light rounded-4 border fs-4 mb-4 user-select-none" style={{ minHeight:'120px', fontFamily:'monospace' }}>
+              <div className="p-4 bg-light rounded-4 border fs-4 mb-4 user-select-none" style={{ minHeight: '120px', fontFamily: 'monospace' }}>
                 {textoOriginal ? renderTextoConColores() : <span className="opacity-50">Cargando prueba...</span>}
               </div>
               <textarea
@@ -205,10 +209,11 @@ ${textoUsuario}`,
                 onChange={handleTextChange}
                 disabled={!isActive || isFinished}
                 rows={1}
-                style={{ position:'absolute', opacity:0, left:'-9999px', pointerEvents:'auto' }}
+                style={{ position: 'absolute', opacity: 0, left: '-9999px', pointerEvents: 'auto' }}
               />
             </div>
           </div>
+
           <div className="col-lg-4">
             <div className="bg-dark text-white rounded-5 p-4 shadow-lg d-flex flex-column gap-4 h-100">
               <div className="text-center py-2">

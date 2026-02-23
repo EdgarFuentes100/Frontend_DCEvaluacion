@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 
 function useFetch() {
-  const urlBase = "http://localhost:4000/api/v1/"; ///"http://localhost:4000/api/v1/"
+  const urlBase = "https://backend-dcevaluacion.onrender.com/api/v1/"; ///"http://localhost:4000/api/v1/"
 
   const manejarRespuesta = async (response) => {
     const contentType = response.headers.get("content-type") || "";
