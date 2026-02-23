@@ -1,52 +1,46 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useCamara } from '../../hook/useCamara'; 
+import { useNavigate } from 'react-router-dom';
+import { useCamara } from '../../hook/useCamara';
 import { useAuthContext } from "../../auth/AuthProvider";
 import { useEmail } from '../../hook/useEmail';
+import { useIntento } from '../../hook/useIntento'; // tu hook original
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
-import ModalConfirm from '../../components/ModalConfirm'; // modal reutilizable
+import ModalConfirm from '../../components/ModalConfirm';
 
 function PruebaMecanografia() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { user, logout } = useAuthContext();
+  const { user } = useAuthContext();
   const { enviarCorreo } = useEmail();
-
   const { videoRef, canvasRef, fotos, isCameraActive, startCamera, stopCamera } = useCamara(30);
+  const { finalizarIntento } = useIntento(); // solo necesitamos finalizar
 
+  const inputRef = useRef(null);
+
+  // --- Estados ---
   const [textoOriginal, setTextoOriginal] = useState('');
   const [textoUsuario, setTextoUsuario] = useState('');
   const [tiempoTranscurrido, setTiempoTranscurrido] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const [estadisticas, setEstadisticas] = useState({
     pulsacionesTotales: 0,
     errores: 0,
     palabrasPorMinuto: 0,
     precision: 100
   });
+  const [showModalEnviar, setShowModalEnviar] = useState(false);
 
-  const [showModalEnviar, setShowModalEnviar] = useState(false); // modal de confirmación
-
-  const inputRef = useRef(null);
+  const TIEMPO_MAXIMO = 10; // 5 minutos en segundos
 
   const textosMuestra = [
-    "La programacion es el proceso de crear instrucciones para una computadora.",
-    "JavaScript es un lenguaje de programacion para paginas web dinamicas.",
-    "React es una biblioteca de JavaScript para interfaces de usuario."
+    "La programación es una habilidad esencial en la era digital. Permite a las personas crear aplicaciones, automatizar procesos y resolver problemas de manera eficiente. Practicar la mecanografía con textos reales mejora tanto la velocidad como la precisión, preparando al usuario para tareas profesionales y académicas.",
+    "JavaScript es un lenguaje versátil que se utiliza para crear páginas web dinámicas e interactivas. Con bibliotecas como React, se pueden construir interfaces modernas que responden al usuario en tiempo real, mejorando la experiencia y eficiencia en la navegación.",
+    "React es una biblioteca de JavaScript para construir interfaces de usuario de manera declarativa. Su enfoque en componentes reutilizables permite mantener aplicaciones grandes de manera organizada, haciendo que la programación moderna sea más rápida y mantenible."
   ];
 
-  // --- Limpiar cámara al salir de la página ---
-  useEffect(() => {
-    return () => {
-      stopCamera();
-    };
-  }, [location.pathname, stopCamera]);
-
-  // Inicia la prueba
+  // --- Iniciar prueba ---
   const iniciarPrueba = async () => {
     const textoAleatorio = textosMuestra[Math.floor(Math.random() * textosMuestra.length)];
     setTextoOriginal(textoAleatorio);
@@ -54,21 +48,58 @@ function PruebaMecanografia() {
     setTiempoTranscurrido(0);
     setIsActive(true);
     setIsFinished(false);
-
-    try { await startCamera(); } catch(e){ console.warn('Cámara no disponible'); }
+    try { await startCamera(); } catch (e) { console.warn('Cámara no disponible'); }
     setTimeout(() => inputRef.current?.focus(), 50);
   };
 
-  // Cronómetro
+  // --- Recuperar del localStorage ---
   useEffect(() => {
-    let interval = null;
-    if (isActive && !isFinished) {
-      interval = setInterval(() => setTiempoTranscurrido(t => t + 0.1), 100);
+    const savedData = localStorage.getItem('pruebaMecanografia');
+    if (savedData) {
+      const { textoOriginal, textoUsuario, tiempoTranscurrido, estadisticas } = JSON.parse(savedData);
+      setTextoOriginal(textoOriginal);
+      setTextoUsuario(textoUsuario);
+      setTiempoTranscurrido(tiempoTranscurrido);
+      setEstadisticas(estadisticas);
+      setIsActive(true);
+      setTimeout(() => inputRef.current?.focus(), 50);
+      startCamera().catch(() => console.warn('Cámara no disponible'));
+    } else {
+      iniciarPrueba();
     }
-    return () => clearInterval(interval);
-  }, [isActive, isFinished]);
+    return () => stopCamera();
+  }, []);
 
-  // Captura cambios del texto
+  // --- Cronómetro ---
+  useEffect(() => {
+    if (!isActive || isFinished) return;
+
+    const interval = setInterval(() => {
+      setTiempoTranscurrido(prev => {
+        const nuevo = prev + 0.1;
+
+        // Guardar en localStorage
+        localStorage.setItem('pruebaMecanografia', JSON.stringify({
+          textoOriginal,
+          textoUsuario,
+          tiempoTranscurrido: nuevo,
+          estadisticas
+        }));
+
+        // Finalizar automáticamente si llega al máximo
+        if (nuevo >= TIEMPO_MAXIMO) {
+          finalizarPrueba();
+          return TIEMPO_MAXIMO;
+        }
+
+        return nuevo;
+      });
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [isActive, isFinished, textoOriginal, textoUsuario, estadisticas]);
+
+  // --- Manejo de escritura ---
   const handleTextChange = (e) => {
     if (!isActive || isFinished) return;
     const valor = e.target.value;
@@ -79,43 +110,45 @@ function PruebaMecanografia() {
 
     const palabras = valor.trim().split(/\s+/).filter(w => w.length > 0);
     const ppm = (palabras.length / (tiempoTranscurrido / 60)) || 0;
-    const prec = valor.length > 0 ? ((valor.length - errores)/valor.length)*100 : 100;
+    const prec = valor.length > 0 ? ((valor.length - errores) / valor.length) * 100 : 100;
 
-    setEstadisticas({
+    const stats = {
       pulsacionesTotales: valor.length,
       errores,
       palabrasPorMinuto: Math.round(ppm),
-      precision: Math.round(prec*10)/10
-    });
+      precision: Math.round(prec * 10) / 10
+    };
+    setEstadisticas(stats);
 
-    if (valor.length >= textoOriginal.length) finalizarPrueba({
-      pulsacionesTotales: valor.length,
-      errores,
-      palabrasPorMinuto: Math.round(ppm),
-      precision: Math.round(prec*10)/10
-    });
+    // Guardar en localStorage
+    localStorage.setItem('pruebaMecanografia', JSON.stringify({
+      textoOriginal,
+      textoUsuario: valor,
+      tiempoTranscurrido,
+      estadisticas: stats
+    }));
+
+    // Finalizar si completa el texto
+    if (valor.length >= textoOriginal.length) finalizarPrueba();
   };
 
-  // Finaliza prueba
-  const finalizarPrueba = (statsFinales) => {
+  // --- Finalizar prueba ---
+  const finalizarPrueba = () => {
     setIsActive(false);
     setIsFinished(true);
     stopCamera();
 
-    const dataPaquete = {
-      usuario: { id: user.id, nombre: user.nombre },
-      resultados: statsFinales || estadisticas,
-      fotos: fotos,
-      textoOriginal,
-      textoUsuario,
-      tiempoSegundos: Math.round(tiempoTranscurrido),
-      fecha: new Date().toISOString()
-    };
+    // Finalizar intento desde localStorage
+    const intento = JSON.parse(localStorage.getItem("intento"));
+    const idIntento = intento?.idIntento;
+    if (idIntento) {
+      finalizarIntento(idIntento);
+    }
 
-    console.log("🏁 Paquete final:", dataPaquete);
+    localStorage.removeItem('pruebaMecanografia');
   };
 
-  // Enviar resultados
+  // --- Enviar resultados ---
   const enviarResultados = async () => {
     if (!isFinished) return;
     setIsSubmitting(true);
@@ -149,16 +182,21 @@ ${textoUsuario}
     }
   };
 
-  const renderTextoConColores = () => textoOriginal.split('').map((l,i)=>{
+  const renderTextoConColores = () => textoOriginal.split('').map((l, i) => {
     let clase = 'text-muted';
-    if(i<textoUsuario.length) clase = textoUsuario[i]===l?'text-success fw-bold':'text-danger bg-danger bg-opacity-10';
+    if (i < textoUsuario.length) clase = textoUsuario[i] === l ? 'text-success fw-bold' : 'text-danger bg-danger bg-opacity-10';
     return <span key={i} className={clase}>{l}</span>;
   });
 
+  const formatTime = (segundos) => {
+    const min = Math.floor(segundos / 60);
+    const sec = Math.floor(segundos % 60);
+    return `${min.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
+  };
+
   return (
     <div className="min-vh-100 d-flex flex-column" style={{ backgroundColor: "#f1f3f5" }}>
-      <Header user={user} logout={logout} showLogout={false}  />
-
+      <Header user={user} showLogout={false} logout={() => {}} />
       <main className="container-fluid px-lg-5 px-3 py-4 flex-grow-1">
         <div className="bg-white rounded-4 shadow-sm p-3 mb-4 d-flex justify-content-between align-items-center border-start border-primary border-4">
           <div>
@@ -168,33 +206,30 @@ ${textoUsuario}
             </span>
           </div>
         </div>
-
         <div className="row g-4">
           <div className="col-lg-8">
             <div className="bg-white rounded-5 shadow-sm p-4 h-100">
               <div className="p-4 bg-light rounded-4 border fs-4 mb-4 user-select-none" style={{ minHeight:'120px', fontFamily:'monospace' }}>
-                {textoOriginal ? renderTextoConColores() : <span className="opacity-50">Haga clic en el botón para iniciar...</span>}
+                {textoOriginal ? renderTextoConColores() : <span className="opacity-50">Cargando prueba...</span>}
               </div>
               <textarea
                 ref={inputRef}
-                className="form-control form-control-lg rounded-4 shadow-none border-2"
                 value={textoUsuario}
                 onChange={handleTextChange}
                 disabled={!isActive || isFinished}
-                placeholder="El tiempo iniciará cuando empieces a escribir..."
-                rows="4"
-                style={{ fontFamily:'monospace', fontSize:'1.25rem', resize:'none' }}
+                rows={1}
+                style={{ position:'absolute', opacity:0, left:'-9999px', pointerEvents:'auto' }}
               />
             </div>
           </div>
-
           <div className="col-lg-4">
             <div className="bg-dark text-white rounded-5 p-4 shadow-lg d-flex flex-column gap-4 h-100">
               <div className="text-center py-2">
-                <div className="display-4 fw-bold text-primary">{Math.floor(tiempoTranscurrido)}s</div>
+                <div className="display-4 fw-bold text-primary">
+                  {formatTime(tiempoTranscurrido)} / {formatTime(TIEMPO_MAXIMO)}
+                </div>
                 <small className="opacity-50">CRONÓMETRO</small>
               </div>
-
               <div className="row g-2 text-center">
                 <div className="col-6">
                   <div className="bg-white bg-opacity-10 rounded-4 p-3 border border-white border-opacity-10">
@@ -209,24 +244,11 @@ ${textoUsuario}
                   </div>
                 </div>
               </div>
-
-              {!isActive && !isFinished && (
-                <button className="btn btn-primary w-100 py-3 rounded-4 fw-bold shadow mt-auto" onClick={iniciarPrueba}>
-                  INICIAR EXAMEN
-                </button>
-              )}
-
               {isFinished && (
                 <div className="mt-auto">
-                  <div className="alert alert-info bg-primary bg-opacity-20 border-0 text-white small mb-3">
-                    <i className="bi bi-camera-fill me-2"></i>
-                    {fotos.length} fotos listas para enviar.
-                  </div>
-                  <button
-                    className="btn btn-success w-100 py-3 rounded-4 fw-bold shadow"
+                  <button className="btn btn-success w-100 py-3 rounded-4 fw-bold shadow"
                     onClick={() => setShowModalEnviar(true)}
-                    disabled={isSubmitting}
-                  >
+                    disabled={isSubmitting}>
                     {isSubmitting ? 'ENVIANDO...' : 'CONFIRMAR Y ENVIAR'}
                   </button>
                 </div>
@@ -236,12 +258,10 @@ ${textoUsuario}
         </div>
       </main>
 
-      {/* Modal de confirmación */}
       <ModalConfirm
         show={showModalEnviar}
         titulo="Confirmar Envío"
         mensaje={`¿Deseas enviar los resultados de la prueba de mecanografía ahora?`}
-        contenidoExtra={null}
         confirmText="Sí, enviar"
         cancelText="Cancelar"
         onCancel={() => setShowModalEnviar(false)}
