@@ -20,92 +20,85 @@ function PruebaPsicologica() {
   const { preguntas } = usePreguntas(idPrueba);
 
   // Cámara
-  const { videoRef, canvasRef, fotos, isCameraActive, startCamera, stopCamera } = useCamara(30);
+  const { videoRef, canvasRef, fotos, startCamera, stopCamera } = useCamara(30);
 
-  // Temporizador de 40 minutos (2400 segundos) - Recuperar de localStorage o iniciar nuevo
+  // Temporizador
   const [tiempoRestante, setTiempoRestante] = useState(() => {
     const tiempoGuardado = localStorage.getItem('tiempoRestantePsicologica');
     const timestampGuardado = localStorage.getItem('tiempoTimestampPsicologica');
-    
+
     if (tiempoGuardado && timestampGuardado) {
       const tiempo = parseInt(tiempoGuardado);
       const timestamp = parseInt(timestampGuardado);
       const ahora = Date.now();
       const segundosPasados = Math.floor((ahora - timestamp) / 1000);
-      
-      // Calcular tiempo restante considerando el tiempo que pasó
-      const nuevoTiempo = Math.max(0, tiempo - segundosPasados);
-      console.log(`⏰ Tiempo recuperado: ${tiempo}s, Pasaron: ${segundosPasados}s, Nuevo tiempo: ${nuevoTiempo}s`);
-      return nuevoTiempo;
+      return Math.max(0, tiempo - segundosPasados);
     }
-    return 2400; // 40 minutos por defecto
+
+    return 2400; // 40 minutos
   });
 
-  // CORRECCIÓN: Inicializar tiempoFormateado con el valor recuperado de tiempoRestante
   const [tiempoFormateado, setTiempoFormateado] = useState(() => {
     const tiempoGuardado = localStorage.getItem('tiempoRestantePsicologica');
     if (tiempoGuardado) {
       const tiempo = parseInt(tiempoGuardado);
       const mins = Math.floor(tiempo / 60);
       const segs = tiempo % 60;
-      return `${mins.toString().padStart(2, '0')}:${segs.toString().padStart(2, '0')}`;
+      return `${mins.toString().padStart(2,'0')}:${segs.toString().padStart(2,'0')}`;
     }
     return '40:00';
   });
-  
+
   const [isTimerActive, setIsTimerActive] = useState(true);
   const [ultimoGuardado, setUltimoGuardado] = useState(Date.now());
-
-  // Estados de la prueba
   const [paginaActual, setPaginaActual] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModalEnviar, setShowModalEnviar] = useState(false);
 
-  // Obtener intento desde localStorage
+  // Obtener intento
   const intento = JSON.parse(localStorage.getItem("intento"));
   const idIntento = intento?.idIntento;
 
   // Hook de respuestas
   const { respuestas, guardarRespuesta } = useRespuestas(idIntento);
 
-  // Iniciar cámara automáticamente
+  // Iniciar cámara
   useEffect(() => {
     const iniciarCamara = async () => {
       try {
         await startCamera();
         console.log("📸 Cámara iniciada");
       } catch (error) {
-        console.warn('Cámara no disponible:', error);
+        console.warn("Cámara no disponible:", error);
       }
     };
-
     iniciarCamara();
-  }, []);
+  }, [startCamera]); // ✅ Dependencia incluida
 
-  // Formatear tiempo (MM:SS)
+  // Formatear tiempo
   const formatearTiempo = (segundos) => {
     const mins = Math.floor(segundos / 60);
     const segs = segundos % 60;
-    return `${mins.toString().padStart(2, '0')}:${segs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2,'0')}:${segs.toString().padStart(2,'0')}`;
   };
 
-  // Guardar tiempo en localStorage cada segundo
+  // Guardar tiempo cada segundo
   useEffect(() => {
     if (isTimerActive && !isFinished) {
       const interval = setInterval(() => {
         localStorage.setItem('tiempoRestantePsicologica', tiempoRestante.toString());
         localStorage.setItem('tiempoTimestampPsicologica', Date.now().toString());
+        setUltimoGuardado(Date.now());
       }, 1000);
 
       return () => clearInterval(interval);
     }
   }, [tiempoRestante, isTimerActive, isFinished]);
 
-  // Efecto del temporizador
+  // Temporizador
   useEffect(() => {
     let interval = null;
-
     if (isTimerActive && tiempoRestante > 0 && !isFinished) {
       interval = setInterval(() => {
         setTiempoRestante(prev => {
@@ -122,92 +115,62 @@ function PruebaPsicologica() {
       }, 1000);
     }
 
-    return () => {
-      if (interval) clearInterval(interval);
-    };
+    return () => { if (interval) clearInterval(interval); };
   }, [isTimerActive, isFinished]);
 
-  // Verificar si todas las preguntas están respondidas
+  // Verificar todas las preguntas
   const todasRespondidas = respuestas.length === preguntas.length;
 
-  // Finalizar por tiempo agotado
+  // Finalizar por tiempo
   const finalizarPorTiempo = () => {
     console.log("⏰ Tiempo agotado");
     setIsTimerActive(false);
     stopCamera();
     setIsFinished(true);
     setShowModalEnviar(true);
-    
-    // Limpiar tiempo guardado
+
     localStorage.removeItem('tiempoRestantePsicologica');
     localStorage.removeItem('tiempoTimestampPsicologica');
   };
 
-  // Preparar datos para enviar
-  const prepararDatosEnvio = () => {
-    return {
-      prueba: "Psicológica",
-      usuario: {
-        id: user?.id,
-        nombre: user?.nombre,
-        email: user?.email
-      },
-      resultados: {
-        preguntasRespondidas: respuestas.length,
-        totalPreguntas: preguntas.length,
-        tiempoUtilizado: 2400 - tiempoRestante,
-        tiempoTotal: 2400,
-        fecha: new Date().toISOString()
-      },
-      respuestas: respuestas,
-      fotos: fotos, // Las fotos capturadas
-      idIntento: idIntento
-    };
-  };
+  // Preparar datos de envío
+  const prepararDatosEnvio = () => ({
+    prueba: "Psicológica",
+    usuario: { id: user?.id, nombre: user?.nombre, email: user?.email },
+    resultados: {
+      preguntasRespondidas: respuestas.length,
+      totalPreguntas: preguntas.length,
+      tiempoUtilizado: 2400 - tiempoRestante,
+      tiempoTotal: 2400,
+      fecha: new Date().toISOString()
+    },
+    respuestas,
+    fotos,
+    idIntento
+  });
 
-  // Enviar resultados por correo
+  // Enviar resultados
   const enviarResultados = async () => {
     setIsSubmitting(true);
-
     try {
       const datos = prepararDatosEnvio();
+      console.log("📤 Enviando resultados", datos);
 
-      console.log("📤 Enviando resultados:", datos);
-      console.log("📸 Fotos a enviar:", datos.fotos.length);
-
-      // Enviar correo
       await enviarCorreo({
         destinatario: "bernabefuentes139@gmail.com",
         asunto: `Prueba Psicológica - ${user?.nombre}`,
-        mensaje: `
-📋 PRUEBA PSICOLÓGICA FINALIZADA
-
-👤 Usuario: ${user?.nombre}
-
-📊 RESULTADOS:
-• Preguntas respondidas: ${respuestas.length}/${preguntas.length}
-• Tiempo utilizado: ${Math.floor((2400 - tiempoRestante) / 60)}:${((2400 - tiempoRestante) % 60).toString().padStart(2, '0')}
-• Tiempo total: 40:00
-• Fotos capturadas: ${fotos.length}
-
-✅ Prueba completada.
-        `,
-        fotos: fotos, // Adjuntar las fotos
+        mensaje: "📋 Prueba finalizada",
+        fotos,
         excel: null
       });
 
-      // Finalizar intento en BD
       await finalizarIntento(idIntento);
 
-      alert("✅ Prueba enviada correctamente");
-      
-      // Limpiar todo
       localStorage.removeItem("intento");
       localStorage.removeItem('tiempoRestantePsicologica');
       localStorage.removeItem('tiempoTimestampPsicologica');
-      
-      navigate('/pruebas');
 
+      navigate('/pruebas');
     } catch (error) {
       console.error("❌ Error al enviar:", error);
       alert("❌ Error al enviar los resultados");
@@ -217,12 +180,10 @@ function PruebaPsicologica() {
     }
   };
 
-  // Limpiar al salir
+  // Limpiar cámara al salir
   useEffect(() => {
-    return () => {
-      stopCamera();
-    };
-  }, []);
+    return () => stopCamera();
+  }, [stopCamera]);
 
   if (!preguntas.length) {
     return (
@@ -247,15 +208,10 @@ function PruebaPsicologica() {
   const inicio = paginaActual * preguntasPorPagina;
   const preguntasActuales = preguntas.slice(inicio, inicio + preguntasPorPagina);
 
-  // Verificar si la página actual está completa
-  const paginaCompleta = preguntasActuales.every(
-    p => respuestas.find(r => r.idPregunta === p.idPregunta)
-  );
-
+  const paginaCompleta = preguntasActuales.every(p => respuestas.find(r => r.idPregunta === p.idPregunta));
   const preguntasRespondidas = respuestas.length;
   const progreso = (preguntasRespondidas / preguntas.length) * 100;
 
-  // Calcular tiempo transcurrido
   const tiempoTranscurrido = 2400 - tiempoRestante;
   const minutosTranscurridos = Math.floor(tiempoTranscurrido / 60);
   const segundosTranscurridos = tiempoTranscurrido % 60;
@@ -264,184 +220,89 @@ function PruebaPsicologica() {
     <div className="min-vh-100 d-flex flex-column bg-light">
       <Header user={user} logout={logout} showLogout={false} />
 
-      {/* Elementos ocultos de cámara */}
       <video ref={videoRef} autoPlay playsInline className="d-none" />
       <canvas ref={canvasRef} className="d-none" />
 
       <main className="container-fluid px-4 px-xl-5 py-4 flex-grow-1">
-
+        {/* Progreso */}
         <div className="row mb-4">
           <div className="col-12">
             <div className="bg-white rounded-3 shadow-sm p-3">
               <div className="d-flex justify-content-between align-items-center mb-2">
                 <span className="fw-semibold">Progreso de preguntas</span>
                 <div>
-                  <span className="text-danger fw-bold me-3">
-                    ⏱️ {tiempoFormateado}
-                  </span>
-                  <span className="text-primary fw-semibold">
-                    {preguntasRespondidas}/{preguntas.length}
-                  </span>
+                  <span className="text-danger fw-bold me-3">⏱️ {tiempoFormateado}</span>
+                  <span className="text-primary fw-semibold">{preguntasRespondidas}/{preguntas.length}</span>
                 </div>
               </div>
               <div className="progress" style={{ height: "8px" }}>
-                <div
-                  className="progress-bar bg-primary"
-                  role="progressbar"
-                  style={{ width: `${progreso}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-        {/* ENCABEZADO */}
-        <div className="row mb-3">
-          <div className="col-12">
-            <div className="d-flex justify-content-between align-items-center">
-              <h4 className="mb-0">Preguntas</h4>
-              <div className="bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-3">
-                <span className="fw-semibold">
-                  Página {paginaActual + 1} de {totalPaginas}
-                </span>
+                <div className="progress-bar bg-primary" role="progressbar" style={{ width: `${progreso}%` }} />
               </div>
             </div>
           </div>
         </div>
 
-        {/* PREGUNTAS */}
+        {/* Preguntas */}
         <div className="row g-4">
           {preguntasActuales.map((pregunta, index) => {
-            const respuestaGuardada = respuestas.find(
-              r => r.idPregunta === pregunta.idPregunta
-            );
-
+            const respuestaGuardada = respuestas.find(r => r.idPregunta === pregunta.idPregunta);
             return (
               <div key={pregunta.idPregunta} className="col-xl-6">
                 <div className="bg-white rounded-3 shadow-sm h-100 p-4">
                   <div className="d-flex gap-3">
-                    <div
-                      className="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                      style={{ width: "40px", height: "40px" }}
-                    >
+                    <div className="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width:"40px", height:"40px" }}>
                       <span className="fw-bold">{inicio + index + 1}</span>
                     </div>
-
                     <div className="flex-grow-1">
                       <p className="fw-medium mb-4">{pregunta.pregunta}</p>
-
                       <div className="d-flex justify-content-between bg-light rounded-3 p-3">
-                        {[1, 2, 3, 4, 5].map((valor) => (
-                          <label
-                            key={valor}
-                            className="d-flex flex-column align-items-center gap-2"
-                            style={{ cursor: "pointer" }}
-                          >
+                        {[1,2,3,4,5].map(valor => (
+                          <label key={valor} className="d-flex flex-column align-items-center gap-2" style={{cursor:'pointer'}}>
                             <input
                               type="radio"
                               name={`pregunta-${pregunta.idPregunta}`}
                               checked={respuestaGuardada?.respuesta === valor}
-                              onChange={() =>
-                                guardarRespuesta(pregunta.idPregunta, valor)
-                              }
+                              onChange={() => guardarRespuesta(pregunta.idPregunta, valor)}
                               className="form-check-input m-0"
-                              style={{ width: "20px", height: "20px" }}
+                              style={{width:"20px",height:"20px"}}
                             />
-                            <span
-                              className={`fw-semibold ${respuestaGuardada?.respuesta === valor
-                                ? "text-primary"
-                                : "text-muted"
-                                }`}
-                            >
-                              {valor}
-                            </span>
+                            <span className={`fw-semibold ${respuestaGuardada?.respuesta === valor ? "text-primary":"text-muted"}`}>{valor}</span>
                           </label>
                         ))}
                       </div>
-
                       <div className="d-flex justify-content-between mt-2 px-2">
                         <span className="small text-muted">Nada de acuerdo</span>
-                        <span className="small text-muted">
-                          Totalmente de acuerdo
-                        </span>
+                        <span className="small text-muted">Totalmente de acuerdo</span>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            );
+            )
           })}
         </div>
 
-        {/* NAVEGACIÓN Y BOTÓN FINALIZAR */}
+        {/* Navegación */}
         <div className="row mt-4">
           <div className="col-12">
-            <div className="bg-white rounded-3 shadow-sm p-3">
-              <div className="d-flex justify-content-between align-items-center">
-                <button
-                  className="btn btn-outline-secondary px-4"
-                  onClick={() => setPaginaActual(p => Math.max(0, p - 1))}
-                  disabled={paginaActual === 0}
-                >
-                  ← Anterior
-                </button>
+            <div className="bg-white rounded-3 shadow-sm p-3 d-flex justify-content-between">
+              <button className="btn btn-outline-secondary px-4" onClick={() => setPaginaActual(p => Math.max(0,p-1))} disabled={paginaActual===0}>← Anterior</button>
 
-                {paginaActual === totalPaginas - 1 ? (
-                  todasRespondidas ? (
-                    <button
-                      className="btn btn-success btn-lg px-5"
-                      onClick={() => {
-                        setIsTimerActive(false);
-                        stopCamera();
-                        setIsFinished(true);
-                        setShowModalEnviar(true);
-                        
-                        // Limpiar tiempo guardado
-                        localStorage.removeItem('tiempoRestantePsicologica');
-                        localStorage.removeItem('tiempoTimestampPsicologica');
-                      }}
-                    >
-                      FINALIZAR PRUEBA
-                    </button>
-                  ) : (
-                    <button
-                      className="btn btn-secondary btn-lg px-5"
-                      disabled
-                    >
-                      Faltan preguntas por responder
-                    </button>
-                  )
+              {paginaActual === totalPaginas-1 ? (
+                todasRespondidas ? (
+                  <button className="btn btn-success btn-lg px-5" onClick={() => setShowModalEnviar(true)}>FINALIZAR PRUEBA</button>
                 ) : (
-                  <button
-                    className="btn btn-primary px-4"
-                    onClick={() => setPaginaActual(p => p + 1)}
-                    disabled={!paginaCompleta}
-                  >
-                    Siguiente →
-                  </button>
-                )}
-              </div>
-
-              {!paginaCompleta && paginaActual !== totalPaginas - 1 && (
-                <div className="text-center mt-3">
-                  <small className="text-warning">
-                    ⚠️ Responde todas las preguntas de esta página para continuar
-                  </small>
-                </div>
-              )}
-
-              {paginaActual === totalPaginas - 1 && !todasRespondidas && (
-                <div className="text-center mt-3">
-                  <small className="text-danger fw-bold">
-                    ⚠️ Debes responder TODAS las preguntas ({preguntasRespondidas}/{preguntas.length}) para finalizar
-                  </small>
-                </div>
+                  <button className="btn btn-secondary btn-lg px-5" disabled>Faltan preguntas por responder</button>
+                )
+              ) : (
+                <button className="btn btn-primary px-4" onClick={() => setPaginaActual(p => p+1)} disabled={!paginaCompleta}>Siguiente →</button>
               )}
             </div>
           </div>
         </div>
       </main>
 
-      {/* Modal de confirmación */}
+      {/* Modal */}
       <ModalConfirm
         show={showModalEnviar}
         titulo="Confirmar Envío - Prueba Psicológica"
@@ -451,7 +312,7 @@ function PruebaPsicologica() {
             <p className="mb-2 fw-bold">Resumen final:</p>
             <ul className="list-unstyled mb-0">
               <li>✓ Preguntas respondidas: {preguntasRespondidas}/{preguntas.length}</li>
-              <li>✓ Tiempo utilizado: {minutosTranscurridos}:{segundosTranscurridos.toString().padStart(2, '0')}</li>
+              <li>✓ Tiempo utilizado: {minutosTranscurridos}:{segundosTranscurridos.toString().padStart(2,'0')}</li>
               <li>✓ Fotos capturadas: {fotos.length}</li>
               <li>✓ Prueba: Psicológica</li>
               <li>✓ Usuario: {user?.nombre}</li>
@@ -460,13 +321,7 @@ function PruebaPsicologica() {
         }
         confirmText="Sí, enviar resultados"
         cancelText="Cancelar"
-        onCancel={() => {
-          setShowModalEnviar(false);
-          // Si se cancela, reactivamos el temporizador?
-          if (tiempoRestante > 0 && !isFinished) {
-            setIsTimerActive(true);
-          }
-        }}
+        onCancel={() => setShowModalEnviar(false)}
         onConfirm={enviarResultados}
       />
 
