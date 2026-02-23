@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCamara } from '../../hook/useCamara';
 import { useAuthContext } from "../../auth/AuthProvider";
 import { useEmail } from '../../hook/useEmail';
-import { useIntento } from '../../hook/useIntento'; // tu hook original
+import { useIntento } from '../../hook/useIntento';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import ModalConfirm from '../../components/ModalConfirm';
@@ -13,11 +13,9 @@ function PruebaMecanografia() {
   const { user } = useAuthContext();
   const { enviarCorreo } = useEmail();
   const { videoRef, canvasRef, fotos, isCameraActive, startCamera, stopCamera } = useCamara(30);
-  const { finalizarIntento } = useIntento(); // solo necesitamos finalizar
-
+  const { finalizarIntento } = useIntento();
   const inputRef = useRef(null);
 
-  // --- Estados ---
   const [textoOriginal, setTextoOriginal] = useState('');
   const [textoUsuario, setTextoUsuario] = useState('');
   const [tiempoTranscurrido, setTiempoTranscurrido] = useState(0);
@@ -32,27 +30,39 @@ function PruebaMecanografia() {
   });
   const [showModalEnviar, setShowModalEnviar] = useState(false);
 
-  const TIEMPO_MAXIMO = 10; // 5 minutos en segundos
-
+  const TIEMPO_MAXIMO = 10; // segundos
   const textosMuestra = [
-    "La programación es una habilidad esencial en la era digital. Permite a las personas crear aplicaciones, automatizar procesos y resolver problemas de manera eficiente. Practicar la mecanografía con textos reales mejora tanto la velocidad como la precisión, preparando al usuario para tareas profesionales y académicas.",
-    "JavaScript es un lenguaje versátil que se utiliza para crear páginas web dinámicas e interactivas. Con bibliotecas como React, se pueden construir interfaces modernas que responden al usuario en tiempo real, mejorando la experiencia y eficiencia en la navegación.",
-    "React es una biblioteca de JavaScript para construir interfaces de usuario de manera declarativa. Su enfoque en componentes reutilizables permite mantener aplicaciones grandes de manera organizada, haciendo que la programación moderna sea más rápida y mantenible."
+    "La programación es una habilidad esencial en la era digital...",
+    "JavaScript es un lenguaje versátil que se utiliza para crear páginas web...",
+    "React es una biblioteca de JavaScript para construir interfaces de usuario..."
   ];
 
   // --- Iniciar prueba ---
-  const iniciarPrueba = async () => {
+  const iniciarPrueba = useCallback(async () => {
     const textoAleatorio = textosMuestra[Math.floor(Math.random() * textosMuestra.length)];
     setTextoOriginal(textoAleatorio);
     setTextoUsuario('');
     setTiempoTranscurrido(0);
     setIsActive(true);
     setIsFinished(false);
-    try { await startCamera(); } catch (e) { console.warn('Cámara no disponible'); }
+    try { await startCamera(); } catch { console.warn('Cámara no disponible'); }
     setTimeout(() => inputRef.current?.focus(), 50);
-  };
+  }, [startCamera]);
 
-  // --- Recuperar del localStorage ---
+  // --- Finalizar prueba ---
+  const finalizarPrueba = useCallback(() => {
+    setIsActive(false);
+    setIsFinished(true);
+    stopCamera();
+
+    const intento = JSON.parse(localStorage.getItem("intento"));
+    const idIntento = intento?.idIntento;
+    if (idIntento) finalizarIntento(idIntento);
+
+    localStorage.removeItem('pruebaMecanografia');
+  }, [stopCamera, finalizarIntento]);
+
+  // --- Recuperar datos del localStorage ---
   useEffect(() => {
     const savedData = localStorage.getItem('pruebaMecanografia');
     if (savedData) {
@@ -68,7 +78,7 @@ function PruebaMecanografia() {
       iniciarPrueba();
     }
     return () => stopCamera();
-  }, []);
+  }, [iniciarPrueba, startCamera, stopCamera]);
 
   // --- Cronómetro ---
   useEffect(() => {
@@ -78,7 +88,6 @@ function PruebaMecanografia() {
       setTiempoTranscurrido(prev => {
         const nuevo = prev + 0.1;
 
-        // Guardar en localStorage
         localStorage.setItem('pruebaMecanografia', JSON.stringify({
           textoOriginal,
           textoUsuario,
@@ -86,18 +95,16 @@ function PruebaMecanografia() {
           estadisticas
         }));
 
-        // Finalizar automáticamente si llega al máximo
         if (nuevo >= TIEMPO_MAXIMO) {
           finalizarPrueba();
           return TIEMPO_MAXIMO;
         }
-
         return nuevo;
       });
     }, 100);
 
     return () => clearInterval(interval);
-  }, [isActive, isFinished, textoOriginal, textoUsuario, estadisticas]);
+  }, [isActive, isFinished, textoOriginal, textoUsuario, estadisticas, finalizarPrueba]);
 
   // --- Manejo de escritura ---
   const handleTextChange = (e) => {
@@ -120,7 +127,6 @@ function PruebaMecanografia() {
     };
     setEstadisticas(stats);
 
-    // Guardar en localStorage
     localStorage.setItem('pruebaMecanografia', JSON.stringify({
       textoOriginal,
       textoUsuario: valor,
@@ -128,24 +134,7 @@ function PruebaMecanografia() {
       estadisticas: stats
     }));
 
-    // Finalizar si completa el texto
     if (valor.length >= textoOriginal.length) finalizarPrueba();
-  };
-
-  // --- Finalizar prueba ---
-  const finalizarPrueba = () => {
-    setIsActive(false);
-    setIsFinished(true);
-    stopCamera();
-
-    // Finalizar intento desde localStorage
-    const intento = JSON.parse(localStorage.getItem("intento"));
-    const idIntento = intento?.idIntento;
-    if (idIntento) {
-      finalizarIntento(idIntento);
-    }
-
-    localStorage.removeItem('pruebaMecanografia');
   };
 
   // --- Enviar resultados ---
@@ -156,8 +145,7 @@ function PruebaMecanografia() {
       await enviarCorreo({
         destinatario: "bernabefuentes139@gmail.com",
         asunto: `Prueba Mecanografía - ${user.nombre}`,
-        mensaje: `
-Usuario: ${user.nombre}
+        mensaje: `Usuario: ${user.nombre}
 Tiempo: ${Math.round(tiempoTranscurrido)}s
 PPM: ${estadisticas.palabrasPorMinuto}
 Precisión: ${estadisticas.precision}%
@@ -167,8 +155,7 @@ Texto original:
 ${textoOriginal}
 
 Texto ingresado:
-${textoUsuario}
-        `,
+${textoUsuario}`,
         fotos: fotos,
         excel: null
       });
