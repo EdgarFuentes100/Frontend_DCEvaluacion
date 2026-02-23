@@ -12,26 +12,96 @@ function PruebaExcel() {
   const { enviarCorreo } = useEmail();
   const { user, logout } = useAuthContext();
 
-  // 🚀 Hook de cámara con limpieza de fotos incluida
+  // 🚀 Hook de cámara
   const { videoRef, canvasRef, fotos, isCameraActive, startCamera, stopCamera, clearPhotos } = useCamara(30);
 
+  // ⏱️ Temporizador
+  const DURACION_TOTAL = 60 * 60; // 60 minutos en segundos
+  const [tiempoRestante, setTiempoRestante] = useState(() => {
+    const tiempoGuardado = localStorage.getItem('tiempoRestanteExcel');
+    const timestampGuardado = localStorage.getItem('tiempoTimestampExcel');
+
+    if (tiempoGuardado && timestampGuardado) {
+      const tiempo = parseInt(tiempoGuardado);
+      const timestamp = parseInt(timestampGuardado);
+      const ahora = Date.now();
+      const segundosPasados = Math.floor((ahora - timestamp) / 1000);
+      return Math.max(0, tiempo - segundosPasados);
+    }
+
+    return DURACION_TOTAL;
+  });
+  const [tiempoFormateado, setTiempoFormateado] = useState(() => {
+    const mins = Math.floor(tiempoRestante / 60);
+    const segs = tiempoRestante % 60;
+    return `${mins.toString().padStart(2,'0')}:${segs.toString().padStart(2,'0')}`;
+  });
+  const [isTimerActive, setIsTimerActive] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Modal
   const [modalTipo, setModalTipo] = useState(""); // "ejemplo" o "enviar"
   const [showModal, setShowModal] = useState(false);
 
-  // Inicia la cámara al montar y la detiene al desmontar
+  // 📸 Inicia cámara al montar y limpia al salir
   useEffect(() => {
     startCamera().catch(err => console.warn("Cámara no disponible:", err));
-
-    return () => {
-      stopCamera(); // Apaga la cámara al salir de la página
-    };
+    return () => stopCamera();
   }, [startCamera, stopCamera]);
 
-  // Función para enviar los resultados
+  // Función para formatear tiempo
+  const formatearTiempo = (segundos) => {
+    const mins = Math.floor(segundos / 60);
+    const segs = segundos % 60;
+    return `${mins.toString().padStart(2,'0')}:${segs.toString().padStart(2,'0')}`;
+  };
+
+  // Guardar tiempo cada segundo y finalizar al agotarse
+  useEffect(() => {
+    if (!isTimerActive) return;
+
+    const interval = setInterval(() => {
+      setTiempoRestante(prev => {
+        const nuevoTiempo = prev - 1;
+        setTiempoFormateado(formatearTiempo(nuevoTiempo));
+
+        // Guardar en localStorage
+        localStorage.setItem('tiempoRestanteExcel', nuevoTiempo.toString());
+        localStorage.setItem('tiempoTimestampExcel', Date.now().toString());
+
+        if (nuevoTiempo <= 0) {
+          clearInterval(interval);
+          finalizarPorTiempo();
+        }
+
+        return nuevoTiempo;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isTimerActive]);
+
+  // Función para finalizar por tiempo
+  const finalizarPorTiempo = async () => {
+    console.log("⏰ Tiempo agotado");
+    setIsTimerActive(false);
+    stopCamera();
+
+    try {
+      await finalizarYEnviar();
+    } catch (error) {
+      console.error("❌ Error al finalizar automáticamente:", error);
+    }
+
+    // Limpiar localStorage
+    localStorage.removeItem('tiempoRestanteExcel');
+    localStorage.removeItem('tiempoTimestampExcel');
+  };
+
+  // Función para enviar resultados
   const finalizarYEnviar = async () => {
     setIsSubmitting(true);
-    stopCamera(); // Detener cámara al enviar
+    stopCamera(); // detener cámara al enviar
 
     let excelBlob = null;
     try {
@@ -67,6 +137,10 @@ function PruebaExcel() {
       // 🔹 Limpiar fotos en memoria
       clearPhotos();
 
+      // Limpiar localStorage
+      localStorage.removeItem('tiempoRestanteExcel');
+      localStorage.removeItem('tiempoTimestampExcel');
+
       navigate('/pruebas');
     } catch (error) {
       console.error("❌ Error enviando email:", error);
@@ -80,6 +154,7 @@ function PruebaExcel() {
       <Header user={user} logout={logout} showLogout={false} />
 
       <main className="container-fluid px-lg-5 px-3 py-4 flex-grow-1">
+
         {/* Cabecera */}
         <div className="bg-white rounded-4 shadow-sm p-3 mb-4 d-flex justify-content-between align-items-center border-start border-success border-4">
           <div>
@@ -89,7 +164,9 @@ function PruebaExcel() {
             </span>
           </div>
 
-          <div className="d-flex gap-2">
+          <div className="d-flex gap-2 align-items-center">
+            <span className="badge bg-warning text-dark">⏱️ {tiempoFormateado}</span>
+
             <button className="btn btn-dark fw-bold rounded-3" onClick={() => { setModalTipo("ejemplo"); setShowModal(true); }}>
               VER EJEMPLO
             </button>

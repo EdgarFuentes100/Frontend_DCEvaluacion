@@ -44,7 +44,7 @@ function PruebaPsicologica() {
       const tiempo = parseInt(tiempoGuardado);
       const mins = Math.floor(tiempo / 60);
       const segs = tiempo % 60;
-      return `${mins.toString().padStart(2,'0')}:${segs.toString().padStart(2,'0')}`;
+      return `${mins.toString().padStart(2, '0')}:${segs.toString().padStart(2, '0')}`;
     }
     return '40:00';
   });
@@ -78,7 +78,7 @@ function PruebaPsicologica() {
   const formatearTiempo = useCallback((segundos) => {
     const mins = Math.floor(segundos / 60);
     const segs = segundos % 60;
-    return `${mins.toString().padStart(2,'0')}:${segs.toString().padStart(2,'0')}`;
+    return `${mins.toString().padStart(2, '0')}:${segs.toString().padStart(2, '0')}`;
   }, []);
 
   // Finalizar por tiempo
@@ -148,11 +148,18 @@ function PruebaPsicologica() {
       await enviarCorreo({
         destinatario: "bernabefuentes139@gmail.com",
         asunto: `Prueba Psicológica - ${user?.nombre}`,
-        mensaje: "📋 Prueba finalizada",
+        mensaje: `
+        📋 Prueba finalizada
+
+        Usuario: ${user?.nombre}
+        Prueba: Psicológica
+        Preguntas respondidas: ${respuestas.length}/${preguntas.length}
+        Tiempo utilizado: ${minutosTranscurridos}:${segundosTranscurridos.toString().padStart(2, '0')}
+        Fotos capturadas: ${fotos.length}
+        `,
         fotos,
         excel: null
       });
-
       await finalizarIntento(idIntento);
 
       localStorage.removeItem("intento");
@@ -237,23 +244,23 @@ function PruebaPsicologica() {
               <div key={pregunta.idPregunta} className="col-xl-6">
                 <div className="bg-white rounded-3 shadow-sm h-100 p-4">
                   <div className="d-flex gap-3">
-                    <div className="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width:"40px", height:"40px" }}>
+                    <div className="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: "40px", height: "40px" }}>
                       <span className="fw-bold">{inicio + index + 1}</span>
                     </div>
                     <div className="flex-grow-1">
                       <p className="fw-medium mb-4">{pregunta.pregunta}</p>
                       <div className="d-flex justify-content-between bg-light rounded-3 p-3">
-                        {[1,2,3,4,5].map(valor => (
-                          <label key={valor} className="d-flex flex-column align-items-center gap-2" style={{cursor:'pointer'}}>
+                        {[1, 2, 3, 4, 5].map(valor => (
+                          <label key={valor} className="d-flex flex-column align-items-center gap-2" style={{ cursor: 'pointer' }}>
                             <input
                               type="radio"
                               name={`pregunta-${pregunta.idPregunta}`}
                               checked={respuestaGuardada?.respuesta === valor}
                               onChange={() => guardarRespuesta(pregunta.idPregunta, valor)}
                               className="form-check-input m-0"
-                              style={{width:"20px",height:"20px"}}
+                              style={{ width: "20px", height: "20px" }}
                             />
-                            <span className={`fw-semibold ${respuestaGuardada?.respuesta === valor ? "text-primary":"text-muted"}`}>{valor}</span>
+                            <span className={`fw-semibold ${respuestaGuardada?.respuesta === valor ? "text-primary" : "text-muted"}`}>{valor}</span>
                           </label>
                         ))}
                       </div>
@@ -273,15 +280,15 @@ function PruebaPsicologica() {
         <div className="row mt-4">
           <div className="col-12">
             <div className="bg-white rounded-3 shadow-sm p-3 d-flex justify-content-between">
-              <button className="btn btn-outline-secondary px-4" onClick={() => setPaginaActual(p => Math.max(0,p-1))} disabled={paginaActual===0}>← Anterior</button>
-              {paginaActual === totalPaginas-1 ? (
+              <button className="btn btn-outline-secondary px-4" onClick={() => setPaginaActual(p => Math.max(0, p - 1))} disabled={paginaActual === 0}>← Anterior</button>
+              {paginaActual === totalPaginas - 1 ? (
                 todasRespondidas ? (
                   <button className="btn btn-success btn-lg px-5" onClick={() => setShowModalEnviar(true)}>FINALIZAR PRUEBA</button>
                 ) : (
                   <button className="btn btn-secondary btn-lg px-5" disabled>Faltan preguntas por responder</button>
                 )
               ) : (
-                <button className="btn btn-primary px-4" onClick={() => setPaginaActual(p => p+1)} disabled={!paginaCompleta}>Siguiente →</button>
+                <button className="btn btn-primary px-4" onClick={() => setPaginaActual(p => p + 1)} disabled={!paginaCompleta}>Siguiente →</button>
               )}
             </div>
           </div>
@@ -297,7 +304,7 @@ function PruebaPsicologica() {
             <p className="mb-2 fw-bold">Resumen final:</p>
             <ul className="list-unstyled mb-0">
               <li>✓ Preguntas respondidas: {preguntasRespondidas}/{preguntas.length}</li>
-              <li>✓ Tiempo utilizado: {minutosTranscurridos}:{segundosTranscurridos.toString().padStart(2,'0')}</li>
+              <li>✓ Tiempo utilizado: {minutosTranscurridos}:{segundosTranscurridos.toString().padStart(2, '0')}</li>
               <li>✓ Fotos capturadas: {fotos.length}</li>
               <li>✓ Prueba: Psicológica</li>
               <li>✓ Usuario: {user?.nombre}</li>
