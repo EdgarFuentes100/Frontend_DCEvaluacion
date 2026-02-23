@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePreguntas } from '../../hook/usePreguntas';
 import { useRespuestas } from '../../hook/useRespuestas';
 import { useAuthContext } from "../../auth/AuthProvider";
@@ -6,144 +6,283 @@ import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import { useNavigate } from 'react-router-dom';
 import { useIntento } from '../../hook/useIntento';
+import { useCamara } from '../../hook/useCamara';
+import { useEmail } from '../../hook/useEmail';
+import ModalConfirm from '../../components/ModalConfirm';
 
 function PruebaPsicologica() {
   const { user, logout } = useAuthContext();
   const navigate = useNavigate();
   const { finalizarIntento } = useIntento();
+  const { enviarCorreo } = useEmail();
 
   const idPrueba = 3; // psicológica
   const { preguntas } = usePreguntas(idPrueba);
+
+  // Cámara
+  const { videoRef, canvasRef, fotos, isCameraActive, startCamera, stopCamera } = useCamara(30);
+
+  // Temporizador de 40 minutos (2400 segundos) - Recuperar de localStorage o iniciar nuevo
+  const [tiempoRestante, setTiempoRestante] = useState(() => {
+    const tiempoGuardado = localStorage.getItem('tiempoRestantePsicologica');
+    const timestampGuardado = localStorage.getItem('tiempoTimestampPsicologica');
+    
+    if (tiempoGuardado && timestampGuardado) {
+      const tiempo = parseInt(tiempoGuardado);
+      const timestamp = parseInt(timestampGuardado);
+      const ahora = Date.now();
+      const segundosPasados = Math.floor((ahora - timestamp) / 1000);
+      
+      // Calcular tiempo restante considerando el tiempo que pasó
+      const nuevoTiempo = Math.max(0, tiempo - segundosPasados);
+      console.log(`⏰ Tiempo recuperado: ${tiempo}s, Pasaron: ${segundosPasados}s, Nuevo tiempo: ${nuevoTiempo}s`);
+      return nuevoTiempo;
+    }
+    return 2400; // 40 minutos por defecto
+  });
+
+  // CORRECCIÓN: Inicializar tiempoFormateado con el valor recuperado de tiempoRestante
+  const [tiempoFormateado, setTiempoFormateado] = useState(() => {
+    const tiempoGuardado = localStorage.getItem('tiempoRestantePsicologica');
+    if (tiempoGuardado) {
+      const tiempo = parseInt(tiempoGuardado);
+      const mins = Math.floor(tiempo / 60);
+      const segs = tiempo % 60;
+      return `${mins.toString().padStart(2, '0')}:${segs.toString().padStart(2, '0')}`;
+    }
+    return '40:00';
+  });
+  
+  const [isTimerActive, setIsTimerActive] = useState(true);
+  const [ultimoGuardado, setUltimoGuardado] = useState(Date.now());
+
+  // Estados de la prueba
+  const [paginaActual, setPaginaActual] = useState(0);
+  const [isFinished, setIsFinished] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showModalEnviar, setShowModalEnviar] = useState(false);
 
   // Obtener intento desde localStorage
   const intento = JSON.parse(localStorage.getItem("intento"));
   const idIntento = intento?.idIntento;
 
-  // Hook de respuestas conectado a BD
+  // Hook de respuestas
   const { respuestas, guardarRespuesta } = useRespuestas(idIntento);
 
-  const [paginaActual, setPaginaActual] = useState(0);
+  // Iniciar cámara automáticamente
+  useEffect(() => {
+    const iniciarCamara = async () => {
+      try {
+        await startCamera();
+        console.log("📸 Cámara iniciada");
+      } catch (error) {
+        console.warn('Cámara no disponible:', error);
+      }
+    };
 
-  if (!preguntas.length) return (
-    <div className="min-vh-100 d-flex flex-column bg-light">
-      <Header user={user} logout={logout} showLogout={false} />
-      <div className="container-fluid py-5 flex-grow-1 d-flex justify-content-center align-items-center">
-        <div className="text-center">
-          <div className="spinner-border text-primary mb-3" role="status">
-            <span className="visually-hidden">Cargando...</span>
+    iniciarCamara();
+  }, []);
+
+  // Formatear tiempo (MM:SS)
+  const formatearTiempo = (segundos) => {
+    const mins = Math.floor(segundos / 60);
+    const segs = segundos % 60;
+    return `${mins.toString().padStart(2, '0')}:${segs.toString().padStart(2, '0')}`;
+  };
+
+  // Guardar tiempo en localStorage cada segundo
+  useEffect(() => {
+    if (isTimerActive && !isFinished) {
+      const interval = setInterval(() => {
+        localStorage.setItem('tiempoRestantePsicologica', tiempoRestante.toString());
+        localStorage.setItem('tiempoTimestampPsicologica', Date.now().toString());
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [tiempoRestante, isTimerActive, isFinished]);
+
+  // Efecto del temporizador
+  useEffect(() => {
+    let interval = null;
+
+    if (isTimerActive && tiempoRestante > 0 && !isFinished) {
+      interval = setInterval(() => {
+        setTiempoRestante(prev => {
+          const nuevoTiempo = prev - 1;
+          setTiempoFormateado(formatearTiempo(nuevoTiempo));
+
+          if (nuevoTiempo <= 0) {
+            clearInterval(interval);
+            finalizarPorTiempo();
+          }
+
+          return nuevoTiempo;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isTimerActive, isFinished]);
+
+  // Verificar si todas las preguntas están respondidas
+  const todasRespondidas = respuestas.length === preguntas.length;
+
+  // Finalizar por tiempo agotado
+  const finalizarPorTiempo = () => {
+    console.log("⏰ Tiempo agotado");
+    setIsTimerActive(false);
+    stopCamera();
+    setIsFinished(true);
+    setShowModalEnviar(true);
+    
+    // Limpiar tiempo guardado
+    localStorage.removeItem('tiempoRestantePsicologica');
+    localStorage.removeItem('tiempoTimestampPsicologica');
+  };
+
+  // Preparar datos para enviar
+  const prepararDatosEnvio = () => {
+    return {
+      prueba: "Psicológica",
+      usuario: {
+        id: user?.id,
+        nombre: user?.nombre,
+        email: user?.email
+      },
+      resultados: {
+        preguntasRespondidas: respuestas.length,
+        totalPreguntas: preguntas.length,
+        tiempoUtilizado: 2400 - tiempoRestante,
+        tiempoTotal: 2400,
+        fecha: new Date().toISOString()
+      },
+      respuestas: respuestas,
+      fotos: fotos, // Las fotos capturadas
+      idIntento: idIntento
+    };
+  };
+
+  // Enviar resultados por correo
+  const enviarResultados = async () => {
+    setIsSubmitting(true);
+
+    try {
+      const datos = prepararDatosEnvio();
+
+      console.log("📤 Enviando resultados:", datos);
+      console.log("📸 Fotos a enviar:", datos.fotos.length);
+
+      // Enviar correo
+      await enviarCorreo({
+        destinatario: "bernabefuentes139@gmail.com",
+        asunto: `Prueba Psicológica - ${user?.nombre}`,
+        mensaje: `
+📋 PRUEBA PSICOLÓGICA FINALIZADA
+
+👤 Usuario: ${user?.nombre}
+
+📊 RESULTADOS:
+• Preguntas respondidas: ${respuestas.length}/${preguntas.length}
+• Tiempo utilizado: ${Math.floor((2400 - tiempoRestante) / 60)}:${((2400 - tiempoRestante) % 60).toString().padStart(2, '0')}
+• Tiempo total: 40:00
+• Fotos capturadas: ${fotos.length}
+
+✅ Prueba completada.
+        `,
+        fotos: fotos, // Adjuntar las fotos
+        excel: null
+      });
+
+      // Finalizar intento en BD
+      await finalizarIntento(idIntento);
+
+      alert("✅ Prueba enviada correctamente");
+      
+      // Limpiar todo
+      localStorage.removeItem("intento");
+      localStorage.removeItem('tiempoRestantePsicologica');
+      localStorage.removeItem('tiempoTimestampPsicologica');
+      
+      navigate('/pruebas');
+
+    } catch (error) {
+      console.error("❌ Error al enviar:", error);
+      alert("❌ Error al enviar los resultados");
+    } finally {
+      setIsSubmitting(false);
+      setShowModalEnviar(false);
+    }
+  };
+
+  // Limpiar al salir
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
+
+  if (!preguntas.length) {
+    return (
+      <div className="min-vh-100 d-flex flex-column bg-light">
+        <Header user={user} logout={logout} showLogout={false} />
+        <div className="container-fluid py-5 flex-grow-1 d-flex justify-content-center align-items-center">
+          <div className="text-center">
+            <div className="spinner-border text-primary mb-3" role="status">
+              <span className="visually-hidden">Cargando...</span>
+            </div>
+            <p className="text-muted">Cargando preguntas...</p>
           </div>
-          <p className="text-muted">Cargando preguntas...</p>
         </div>
+        <Footer />
       </div>
-      <Footer />
-    </div>
-  );
+    );
+  }
 
   // Paginación
   const preguntasPorPagina = 10;
   const totalPaginas = Math.ceil(preguntas.length / preguntasPorPagina);
   const inicio = paginaActual * preguntasPorPagina;
-  const fin = inicio + preguntasPorPagina;
-  const preguntasActuales = preguntas.slice(inicio, fin);
+  const preguntasActuales = preguntas.slice(inicio, inicio + preguntasPorPagina);
 
-  // ✅ Guardar respuesta en BD con peso y porcentaje calculado
-  const handleChange = (idPregunta, valorRespuesta) => {
-    // Buscar la pregunta para obtener pesoImportancia y maximo
-    const pregunta = preguntas.find(p => p.idPregunta === idPregunta);
-    
-    if (!pregunta) return;
-    
-    // Calcular peso y porcentaje
-    const peso = pregunta.pesoImportancia * valorRespuesta; // pesoImportancia * respuesta
-    const porcentaje = (peso / pregunta.maximo) * 100; // (peso / maximo) * 100
-    
-    console.log(`📊 Pregunta ${idPregunta}:`, {
-      respuesta: valorRespuesta,
-      pesoImportancia: pregunta.pesoImportancia,
-      maximo: pregunta.maximo,
-      pesoCalculado: peso,
-      porcentajeCalculado: Math.round(porcentaje * 100) / 100 + '%'
-    });
-    
-    // Guardar con peso y porcentaje calculados
-    guardarRespuesta(idPregunta, valorRespuesta, peso, porcentaje);
-  };
-
-  const siguiente = () => {
-    if (paginaActual < totalPaginas - 1) {
-      setPaginaActual(paginaActual + 1);
-      window.scrollTo(0, 0);
-    }
-  };
-
-  const anterior = () => {
-    if (paginaActual > 0) {
-      setPaginaActual(paginaActual - 1);
-      window.scrollTo(0, 0);
-    }
-  };
-
-  const finalizar = async () => {
-    if (!pruebaCompleta) {
-      alert("Debes responder todas las preguntas antes de finalizar.");
-      return;
-    }
-
-    if (!idIntento) {
-      alert("No se encontró el intento activo.");
-      return;
-    }
-
-    try {
-      console.log("Finalizando intento:", idIntento);
-      console.log("Respuestas guardadas:", respuestas);
-
-      const ok = await finalizarIntento(idIntento);
-
-      if (ok) {
-        console.log("Intento finalizado correctamente");
-        alert("Prueba finalizada correctamente");
-
-        // limpiar localStorage
-        localStorage.removeItem("intento");
-
-        // redirigir
-        navigate("/pruebas");
-      } else {
-        alert("Error al finalizar la prueba.");
-      }
-    } catch (error) {
-      console.error("Error real:", error);
-      alert("Error del servidor.");
-    }
-  };
-
-  // Verificaciones
+  // Verificar si la página actual está completa
   const paginaCompleta = preguntasActuales.every(
-    p => respuestas.find(r => r.idPregunta === p.idPregunta)
-  );
-
-  const pruebaCompleta = preguntas.every(
     p => respuestas.find(r => r.idPregunta === p.idPregunta)
   );
 
   const preguntasRespondidas = respuestas.length;
   const progreso = (preguntasRespondidas / preguntas.length) * 100;
 
+  // Calcular tiempo transcurrido
+  const tiempoTranscurrido = 2400 - tiempoRestante;
+  const minutosTranscurridos = Math.floor(tiempoTranscurrido / 60);
+  const segundosTranscurridos = tiempoTranscurrido % 60;
+
   return (
     <div className="min-vh-100 d-flex flex-column bg-light">
       <Header user={user} logout={logout} showLogout={false} />
 
+      {/* Elementos ocultos de cámara */}
+      <video ref={videoRef} autoPlay playsInline className="d-none" />
+      <canvas ref={canvasRef} className="d-none" />
+
       <main className="container-fluid px-4 px-xl-5 py-4 flex-grow-1">
-        {/* PROGRESO */}
+
         <div className="row mb-4">
           <div className="col-12">
             <div className="bg-white rounded-3 shadow-sm p-3">
               <div className="d-flex justify-content-between align-items-center mb-2">
-                <span className="fw-semibold">Progreso total</span>
-                <span className="text-primary fw-semibold">
-                  {preguntasRespondidas}/{preguntas.length} preguntas
-                </span>
+                <span className="fw-semibold">Progreso de preguntas</span>
+                <div>
+                  <span className="text-danger fw-bold me-3">
+                    ⏱️ {tiempoFormateado}
+                  </span>
+                  <span className="text-primary fw-semibold">
+                    {preguntasRespondidas}/{preguntas.length}
+                  </span>
+                </div>
               </div>
               <div className="progress" style={{ height: "8px" }}>
                 <div
@@ -155,12 +294,11 @@ function PruebaPsicologica() {
             </div>
           </div>
         </div>
-
         {/* ENCABEZADO */}
         <div className="row mb-3">
           <div className="col-12">
             <div className="d-flex justify-content-between align-items-center">
-              <h4 className="mb-0">Prueba Psicológica</h4>
+              <h4 className="mb-0">Preguntas</h4>
               <div className="bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-3">
                 <span className="fw-semibold">
                   Página {paginaActual + 1} de {totalPaginas}
@@ -176,7 +314,7 @@ function PruebaPsicologica() {
             const respuestaGuardada = respuestas.find(
               r => r.idPregunta === pregunta.idPregunta
             );
-            
+
             return (
               <div key={pregunta.idPregunta} className="col-xl-6">
                 <div className="bg-white rounded-3 shadow-sm h-100 p-4">
@@ -203,7 +341,7 @@ function PruebaPsicologica() {
                               name={`pregunta-${pregunta.idPregunta}`}
                               checked={respuestaGuardada?.respuesta === valor}
                               onChange={() =>
-                                handleChange(pregunta.idPregunta, valor)
+                                guardarRespuesta(pregunta.idPregunta, valor)
                               }
                               className="form-check-input m-0"
                               style={{ width: "20px", height: "20px" }}
@@ -234,31 +372,48 @@ function PruebaPsicologica() {
           })}
         </div>
 
-        {/* NAVEGACIÓN */}
+        {/* NAVEGACIÓN Y BOTÓN FINALIZAR */}
         <div className="row mt-4">
           <div className="col-12">
             <div className="bg-white rounded-3 shadow-sm p-3">
               <div className="d-flex justify-content-between align-items-center">
                 <button
                   className="btn btn-outline-secondary px-4"
-                  onClick={anterior}
+                  onClick={() => setPaginaActual(p => Math.max(0, p - 1))}
                   disabled={paginaActual === 0}
                 >
                   ← Anterior
                 </button>
 
                 {paginaActual === totalPaginas - 1 ? (
-                  <button
-                    className="btn btn-success px-4"
-                    onClick={finalizar}
-                    disabled={!pruebaCompleta}
-                  >
-                    Finalizar
-                  </button>
+                  todasRespondidas ? (
+                    <button
+                      className="btn btn-success btn-lg px-5"
+                      onClick={() => {
+                        setIsTimerActive(false);
+                        stopCamera();
+                        setIsFinished(true);
+                        setShowModalEnviar(true);
+                        
+                        // Limpiar tiempo guardado
+                        localStorage.removeItem('tiempoRestantePsicologica');
+                        localStorage.removeItem('tiempoTimestampPsicologica');
+                      }}
+                    >
+                      FINALIZAR PRUEBA
+                    </button>
+                  ) : (
+                    <button
+                      className="btn btn-secondary btn-lg px-5"
+                      disabled
+                    >
+                      Faltan preguntas por responder
+                    </button>
+                  )
                 ) : (
                   <button
                     className="btn btn-primary px-4"
-                    onClick={siguiente}
+                    onClick={() => setPaginaActual(p => p + 1)}
                     disabled={!paginaCompleta}
                   >
                     Siguiente →
@@ -269,7 +424,15 @@ function PruebaPsicologica() {
               {!paginaCompleta && paginaActual !== totalPaginas - 1 && (
                 <div className="text-center mt-3">
                   <small className="text-warning">
-                    ⚠️ Responde todas las preguntas para continuar
+                    ⚠️ Responde todas las preguntas de esta página para continuar
+                  </small>
+                </div>
+              )}
+
+              {paginaActual === totalPaginas - 1 && !todasRespondidas && (
+                <div className="text-center mt-3">
+                  <small className="text-danger fw-bold">
+                    ⚠️ Debes responder TODAS las preguntas ({preguntasRespondidas}/{preguntas.length}) para finalizar
                   </small>
                 </div>
               )}
@@ -277,6 +440,35 @@ function PruebaPsicologica() {
           </div>
         </div>
       </main>
+
+      {/* Modal de confirmación */}
+      <ModalConfirm
+        show={showModalEnviar}
+        titulo="Confirmar Envío - Prueba Psicológica"
+        mensaje={`¿Deseas enviar los resultados de la prueba psicológica?`}
+        contenidoExtra={
+          <div className="mt-3 p-3 bg-light rounded-3">
+            <p className="mb-2 fw-bold">Resumen final:</p>
+            <ul className="list-unstyled mb-0">
+              <li>✓ Preguntas respondidas: {preguntasRespondidas}/{preguntas.length}</li>
+              <li>✓ Tiempo utilizado: {minutosTranscurridos}:{segundosTranscurridos.toString().padStart(2, '0')}</li>
+              <li>✓ Fotos capturadas: {fotos.length}</li>
+              <li>✓ Prueba: Psicológica</li>
+              <li>✓ Usuario: {user?.nombre}</li>
+            </ul>
+          </div>
+        }
+        confirmText="Sí, enviar resultados"
+        cancelText="Cancelar"
+        onCancel={() => {
+          setShowModalEnviar(false);
+          // Si se cancela, reactivamos el temporizador?
+          if (tiempoRestante > 0 && !isFinished) {
+            setIsTimerActive(true);
+          }
+        }}
+        onConfirm={enviarResultados}
+      />
 
       <Footer />
     </div>
