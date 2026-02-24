@@ -104,7 +104,7 @@ function PruebaExcel() {
       alert("❌ Error enviando el correo.");
       setIsSubmitting(false);
     }
-  }, [user, fotos, enviarCorreo, clearPhotos, navigate]);
+  }, [user, fotos, enviarCorreo, clearPhotos, navigate, startCamera]);
 
   // Finalizar por tiempo
   const finalizarPorTiempo = useCallback(async () => {
