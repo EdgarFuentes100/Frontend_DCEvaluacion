@@ -1,6 +1,7 @@
+// pages/PruebaExcel.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCamara } from '../../hook/useCamara'; 
+import { useCamara } from '../../hook/useCamara';
 import { useAuthContext } from "../../auth/AuthProvider";
 import { useEmail } from "../../hook/useEmail";
 import Header from '../../components/Header';
@@ -16,7 +17,7 @@ function PruebaExcel() {
   const { videoRef, canvasRef, fotos, isCameraActive, startCamera, stopCamera, clearPhotos } = useCamara(30);
 
   // ⏱️ Temporizador
-  const DURACION_TOTAL = 60 * 60; // 60 minutos en segundos
+  const DURACION_TOTAL = 60 * 60; // 60 minutos
   const [tiempoRestante, setTiempoRestante] = useState(() => {
     const tiempoGuardado = localStorage.getItem('tiempoRestanteExcel');
     const timestampGuardado = localStorage.getItem('tiempoTimestampExcel');
@@ -34,7 +35,7 @@ function PruebaExcel() {
   const [tiempoFormateado, setTiempoFormateado] = useState(() => {
     const mins = Math.floor(tiempoRestante / 60);
     const segs = tiempoRestante % 60;
-    return `${mins.toString().padStart(2,'0')}:${segs.toString().padStart(2,'0')}`;
+    return `${mins.toString().padStart(2, '0')}:${segs.toString().padStart(2, '0')}`;
   });
   const [isTimerActive, setIsTimerActive] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,29 +44,27 @@ function PruebaExcel() {
   const [modalTipo, setModalTipo] = useState(""); // "ejemplo" o "enviar"
   const [showModal, setShowModal] = useState(false);
 
-  // 📸 Inicia cámara al montar y limpia al salir
+  // 📸 Inicia cámara al montar
   useEffect(() => {
     startCamera().catch(err => console.warn("Cámara no disponible:", err));
     return () => stopCamera();
   }, [startCamera, stopCamera]);
 
-  // Función para formatear tiempo
+  // Formatear tiempo
   const formatearTiempo = (segundos) => {
     const mins = Math.floor(segundos / 60);
     const segs = segundos % 60;
-    return `${mins.toString().padStart(2,'0')}:${segs.toString().padStart(2,'0')}`;
+    return `${mins.toString().padStart(2, '0')}:${segs.toString().padStart(2, '0')}`;
   };
 
-  // Guardar tiempo cada segundo y finalizar al agotarse
+  // Temporizador
   useEffect(() => {
     if (!isTimerActive) return;
-
     const interval = setInterval(() => {
       setTiempoRestante(prev => {
         const nuevoTiempo = prev - 1;
         setTiempoFormateado(formatearTiempo(nuevoTiempo));
 
-        // Guardar en localStorage
         localStorage.setItem('tiempoRestanteExcel', nuevoTiempo.toString());
         localStorage.setItem('tiempoTimestampExcel', Date.now().toString());
 
@@ -77,11 +76,10 @@ function PruebaExcel() {
         return nuevoTiempo;
       });
     }, 1000);
-
     return () => clearInterval(interval);
   }, [isTimerActive]);
 
-  // Función para finalizar por tiempo
+  // Finalizar por tiempo
   const finalizarPorTiempo = async () => {
     console.log("⏰ Tiempo agotado");
     setIsTimerActive(false);
@@ -93,7 +91,6 @@ function PruebaExcel() {
       console.error("❌ Error al finalizar automáticamente:", error);
     }
 
-    // Limpiar localStorage
     localStorage.removeItem('tiempoRestanteExcel');
     localStorage.removeItem('tiempoTimestampExcel');
   };
@@ -101,7 +98,7 @@ function PruebaExcel() {
   // Función para enviar resultados
   const finalizarYEnviar = async () => {
     setIsSubmitting(true);
-    stopCamera(); // detener cámara al enviar
+    stopCamera();
 
     let excelBlob = null;
     try {
@@ -134,10 +131,7 @@ function PruebaExcel() {
 
       alert("✅ Expediente enviado correctamente por Email.");
 
-      // 🔹 Limpiar fotos en memoria
       clearPhotos();
-
-      // Limpiar localStorage
       localStorage.removeItem('tiempoRestanteExcel');
       localStorage.removeItem('tiempoTimestampExcel');
 
@@ -145,7 +139,7 @@ function PruebaExcel() {
     } catch (error) {
       console.error("❌ Error enviando email:", error);
       alert("❌ Error enviando el correo.");
-      setIsSubmitting(false); // habilitar botón si falla
+      setIsSubmitting(false);
     }
   };
 
@@ -167,11 +161,14 @@ function PruebaExcel() {
           <div className="d-flex gap-2 align-items-center">
             <span className="badge bg-warning text-dark">⏱️ {tiempoFormateado}</span>
 
-            <button className="btn btn-dark fw-bold rounded-3" onClick={() => { setModalTipo("ejemplo"); setShowModal(true); }}>
+            <button className="btn btn-dark fw-bold rounded-3"
+              onClick={() => { setModalTipo("ejemplo"); setShowModal(true); }}>
               VER EJEMPLO
             </button>
 
-            <button className="btn btn-danger fw-bold rounded-3 shadow" onClick={() => { setModalTipo("enviar"); setShowModal(true); }} disabled={isSubmitting}>
+            <button className="btn btn-danger fw-bold rounded-3 shadow"
+              onClick={() => { setModalTipo("enviar"); setShowModal(true); }}
+              disabled={isSubmitting}>
               {isSubmitting ? 'ENVIANDO...' : 'FINALIZAR Y ENVIAR'}
             </button>
           </div>
@@ -185,12 +182,78 @@ function PruebaExcel() {
         {/* Modal Confirm */}
         <ModalConfirm
           show={showModal}
-          titulo={modalTipo === "ejemplo" ? "Ejemplo de Excel" : "Confirmar Envío"}
-          mensaje={modalTipo === "ejemplo"
-            ? "Aquí puedes ver un ejemplo de la plantilla de Excel."
-            : "¿Deseas finalizar la prueba y enviar los resultados?"}
+          size={modalTipo === "ejemplo" ? "xl" : "md"}
+          titulo={modalTipo === "ejemplo" ? "Instrucciones de la Evaluación" : "Confirmar Envío"}
+          mensaje={
+            modalTipo === "ejemplo" ? (
+              <div style={{ textAlign: "left" }}>
+                <h6 className="fw-bold mb-3">INSTRUCCIONES DE EVALUACIÓN - EXCEL <strong>Total: 100%</strong> </h6>
+                <hr />
+
+                {/* Fila 1: Paso 1 y Paso 2 */}
+                <div style={{ display: "flex", borderBottom: "1px solid #ccc", marginBottom: "20px" }}>
+                  {/* Paso 1 */}
+                  <div style={{ flex: 1, paddingRight: "20px", borderRight: "1px solid #ccc" }}>
+                    <p><strong>1️⃣ Encabezados (30%)</strong></p>
+                    <ul>
+                      <li>Trabaje únicamente en la Hoja 1.</li>
+                      <li>A1: Fecha</li>
+                      <li>B1: Nombre</li>
+                      <li>C1: Producto</li>
+                      <li>D1: Cantidad</li>
+                      <li>E1: Precio Unitario</li>
+                      <li>F1: Total</li>
+                      <li>Negrita en A1:F1</li>
+                    </ul>
+                  </div>
+
+                  {/* Paso 2 */}
+                  <div style={{ flex: 1, paddingLeft: "20px" }}>
+                    <p><strong>2️⃣ Ingreso de datos (30%)</strong></p>
+                    <ul>
+                      <li>Fila 2: 01/02/2026 | Ana | Cuaderno | 5 | 2.50</li>
+                      <li>Fila 3: 02/02/2026 | Luis | Lápiz | 10 | 0.80</li>
+                      <li>Fila 4: 03/02/2026 | María | Libro | 2 | 12.00</li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Fila 2: Paso 3, 4 y 5 */}
+                <div style={{ display: "flex", gap: "20px" }}>
+                  {/* Paso 3 */}
+                  <div style={{ flex: 1, paddingRight: "20px", borderRight: "1px solid #ccc" }}>
+                    <p><strong>3️⃣ Fórmulas (10%)</strong></p>
+                    <ul>
+                      <li>F2: =D2*E2</li>
+                      <li>Copiar hasta F4</li>
+                    </ul>
+                  </div>
+
+                  {/* Paso 4 */}
+                  <div style={{ flex: 1, paddingRight: "20px", borderRight: "1px solid #ccc" }}>
+                    <p><strong>4️⃣ Formato (15%)</strong></p>
+                    <ul>
+                      <li>Bordes en A1:F4</li>
+                      <li>Formato moneda en E2:E4 y F2:F4</li>
+                    </ul>
+                  </div>
+
+                  {/* Paso 5 */}
+                  <div style={{ flex: 1, paddingLeft: "20px" }}>
+                    <p><strong>5️⃣ Total General (15%)</strong></p>
+                    <ul>
+                      <li>E6: TOTAL GENERAL</li>
+                      <li>F6: =SUMA(F2:F4)</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              "¿Deseas finalizar la prueba y enviar los resultados?"
+            )
+          }
           confirmText={modalTipo === "ejemplo" ? "Cerrar" : "Sí, enviar"}
-          cancelText={modalTipo === "ejemplo" ? "Cancelar" : "No"}
+          cancelText={modalTipo === "ejemplo" ? "" : "No"}
           onCancel={() => setShowModal(false)}
           onConfirm={() => {
             setShowModal(false);

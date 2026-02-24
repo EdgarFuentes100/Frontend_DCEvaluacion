@@ -3,6 +3,7 @@ import { useAuthContext } from "../auth/AuthProvider";
 import Usuario from "./usuario/usuario";
 import { useState } from "react";
 import LoadingScreen from "../components/LoadingScreen";
+import EvaluacionUsuarios from "./EvaluacionUsuarios";
 
 const Dashboard = () => {
   const { user, logout } = useAuthContext();
@@ -20,6 +21,7 @@ const Dashboard = () => {
 
   const menuItems = [
     { path: "usuario", label: "Gestión de Usuarios", roles: ["Administrador"], icon: "bi-people-fill" },
+    { path: "evaluacion", label: "Gestión de evaluaciones", roles: ["Administrador"], icon: "bi-people-fill" },
   ];
 
   const allowedMenu = menuItems.filter(item => item.roles.includes(user.rol));
@@ -28,7 +30,7 @@ const Dashboard = () => {
 
   return (
     <div className="drok-container d-flex vh-100 overflow-hidden">
-      
+
       {/* SIDEBAR */}
       <aside className={`drok-sidebar ${showSidebar ? 'mobile-on' : ''}`}>
         <div className="p-4 d-flex justify-content-between align-items-center">
@@ -89,14 +91,19 @@ const Dashboard = () => {
             {new Date().toLocaleDateString()}
           </div>
         </header>
-
         <section className="drok-page-content flex-grow-1 overflow-auto bg-white p-2 p-md-4">
           <div className="container-fluid p-0">
             <Routes>
-              <Route path="/" element={<Navigate to={allowedMenu[0]?.path || "/dashboard"} />} />
+              <Route path="/" element={<Navigate to={`/dashboard/${allowedMenu[0]?.path || ""}`} />} />
+
               {allowedMenu.some(m => m.path === "usuario") && (
                 <Route path="usuario" element={<Usuario />} />
               )}
+
+              {allowedMenu.some(m => m.path === "evaluacion") && (
+                <Route path="evaluacion" element={<EvaluacionUsuarios />} />
+              )}
+
               <Route path="*" element={<div className="p-5 text-center">Módulo en construcción</div>} />
             </Routes>
           </div>
