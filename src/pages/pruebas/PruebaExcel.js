@@ -104,7 +104,7 @@ function PruebaExcel() {
       alert("❌ Error enviando el correo.");
       setIsSubmitting(false);
     }
-  }, [user, fotos, enviarCorreo, clearPhotos, navigate, startCamera]);
+  }, [user, fotos, enviarCorreo, clearPhotos, navigate, stopCamera]);
 
   // Finalizar por tiempo
   const finalizarPorTiempo = useCallback(async () => {
@@ -189,7 +189,6 @@ function PruebaExcel() {
                 <h6 className="fw-bold mb-3">INSTRUCCIONES DE EVALUACIÓN - EXCEL <strong>Total: 100%</strong> </h6>
                 <hr />
 
-                {/* Fila 1: Paso 1 y Paso 2 */}
                 <div style={{ display: "flex", borderBottom: "1px solid #ccc", marginBottom: "20px" }}>
                   <div style={{ flex: 1, paddingRight: "20px", borderRight: "1px solid #ccc" }}>
                     <p><strong>1️⃣ Encabezados (30%)</strong></p>
@@ -214,7 +213,6 @@ function PruebaExcel() {
                   </div>
                 </div>
 
-                {/* Fila 2: Paso 3, 4 y 5 */}
                 <div style={{ display: "flex", gap: "20px" }}>
                   <div style={{ flex: 1, paddingRight: "20px", borderRight: "1px solid #ccc" }}>
                     <p><strong>3️⃣ Fórmulas (10%)</strong></p>
