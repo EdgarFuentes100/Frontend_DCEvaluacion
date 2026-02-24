@@ -1,5 +1,5 @@
 // pages/PruebaExcel.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCamara } from '../../hook/useCamara';
 import { useAuthContext } from "../../auth/AuthProvider";
@@ -32,6 +32,7 @@ function PruebaExcel() {
 
     return DURACION_TOTAL;
   });
+
   const [tiempoFormateado, setTiempoFormateado] = useState(() => {
     const mins = Math.floor(tiempoRestante / 60);
     const segs = tiempoRestante % 60;
@@ -57,46 +58,8 @@ function PruebaExcel() {
     return `${mins.toString().padStart(2, '0')}:${segs.toString().padStart(2, '0')}`;
   };
 
-  // Temporizador
-  useEffect(() => {
-    if (!isTimerActive) return;
-    const interval = setInterval(() => {
-      setTiempoRestante(prev => {
-        const nuevoTiempo = prev - 1;
-        setTiempoFormateado(formatearTiempo(nuevoTiempo));
-
-        localStorage.setItem('tiempoRestanteExcel', nuevoTiempo.toString());
-        localStorage.setItem('tiempoTimestampExcel', Date.now().toString());
-
-        if (nuevoTiempo <= 0) {
-          clearInterval(interval);
-          finalizarPorTiempo();
-        }
-
-        return nuevoTiempo;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isTimerActive]);
-
-  // Finalizar por tiempo
-  const finalizarPorTiempo = async () => {
-    console.log("⏰ Tiempo agotado");
-    setIsTimerActive(false);
-    stopCamera();
-
-    try {
-      await finalizarYEnviar();
-    } catch (error) {
-      console.error("❌ Error al finalizar automáticamente:", error);
-    }
-
-    localStorage.removeItem('tiempoRestanteExcel');
-    localStorage.removeItem('tiempoTimestampExcel');
-  };
-
   // Función para enviar resultados
-  const finalizarYEnviar = async () => {
+  const finalizarYEnviar = useCallback(async () => {
     setIsSubmitting(true);
     stopCamera();
 
@@ -141,7 +104,43 @@ function PruebaExcel() {
       alert("❌ Error enviando el correo.");
       setIsSubmitting(false);
     }
-  };
+  }, [user, fotos, enviarCorreo, clearPhotos, navigate]);
+
+  // Finalizar por tiempo
+  const finalizarPorTiempo = useCallback(async () => {
+    console.log("⏰ Tiempo agotado");
+    setIsTimerActive(false);
+    stopCamera();
+    try {
+      await finalizarYEnviar();
+    } catch (error) {
+      console.error("❌ Error al finalizar automáticamente:", error);
+    }
+    localStorage.removeItem('tiempoRestanteExcel');
+    localStorage.removeItem('tiempoTimestampExcel');
+  }, [finalizarYEnviar, stopCamera]);
+
+  // Temporizador
+  useEffect(() => {
+    if (!isTimerActive) return;
+    const interval = setInterval(() => {
+      setTiempoRestante(prev => {
+        const nuevoTiempo = prev - 1;
+        setTiempoFormateado(formatearTiempo(nuevoTiempo));
+
+        localStorage.setItem('tiempoRestanteExcel', nuevoTiempo.toString());
+        localStorage.setItem('tiempoTimestampExcel', Date.now().toString());
+
+        if (nuevoTiempo <= 0) {
+          clearInterval(interval);
+          finalizarPorTiempo();
+        }
+
+        return nuevoTiempo;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isTimerActive, finalizarPorTiempo]);
 
   return (
     <div className="min-vh-100 d-flex flex-column" style={{ backgroundColor: "#f1f3f5" }}>
@@ -192,7 +191,6 @@ function PruebaExcel() {
 
                 {/* Fila 1: Paso 1 y Paso 2 */}
                 <div style={{ display: "flex", borderBottom: "1px solid #ccc", marginBottom: "20px" }}>
-                  {/* Paso 1 */}
                   <div style={{ flex: 1, paddingRight: "20px", borderRight: "1px solid #ccc" }}>
                     <p><strong>1️⃣ Encabezados (30%)</strong></p>
                     <ul>
@@ -206,8 +204,6 @@ function PruebaExcel() {
                       <li>Negrita en A1:F1</li>
                     </ul>
                   </div>
-
-                  {/* Paso 2 */}
                   <div style={{ flex: 1, paddingLeft: "20px" }}>
                     <p><strong>2️⃣ Ingreso de datos (30%)</strong></p>
                     <ul>
@@ -220,7 +216,6 @@ function PruebaExcel() {
 
                 {/* Fila 2: Paso 3, 4 y 5 */}
                 <div style={{ display: "flex", gap: "20px" }}>
-                  {/* Paso 3 */}
                   <div style={{ flex: 1, paddingRight: "20px", borderRight: "1px solid #ccc" }}>
                     <p><strong>3️⃣ Fórmulas (10%)</strong></p>
                     <ul>
@@ -228,8 +223,6 @@ function PruebaExcel() {
                       <li>Copiar hasta F4</li>
                     </ul>
                   </div>
-
-                  {/* Paso 4 */}
                   <div style={{ flex: 1, paddingRight: "20px", borderRight: "1px solid #ccc" }}>
                     <p><strong>4️⃣ Formato (15%)</strong></p>
                     <ul>
@@ -237,8 +230,6 @@ function PruebaExcel() {
                       <li>Formato moneda en E2:E4 y F2:F4</li>
                     </ul>
                   </div>
-
-                  {/* Paso 5 */}
                   <div style={{ flex: 1, paddingLeft: "20px" }}>
                     <p><strong>5️⃣ Total General (15%)</strong></p>
                     <ul>
