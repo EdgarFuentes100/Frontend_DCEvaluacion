@@ -71,7 +71,7 @@ function PruebaMecanografia() {
       });
     };
     return () => worker.terminate();
-  }, [isFinished]);
+  }, [isFinished, finalizar]);
 
   // Guardado para F5
   useEffect(() => {
@@ -93,7 +93,7 @@ function PruebaMecanografia() {
       inputRef.current?.setSelectionRange(textoUsuario.length, textoUsuario.length);
     }, 600);
     return () => stopCamera();
-  }, []);
+}, [startCamera, stopCamera, textoUsuario.length]);
 
   // --- ENVÍO COMPLETO (CORREO + DB) ---
   const enviarResultadosCompletos = async () => {
