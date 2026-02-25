@@ -43,13 +43,30 @@ const useIntento = () => {
         }
     };
 
+
+    const actualizarPrueba3 = async (idUsuario) => {
+        try {
+            const res = await putFetch(`resultados/prueba3/${idUsuario}`);
+            if (res.ok) {
+                return true;
+            } else {
+                console.log("Error al finalizar");
+                return false;
+            }
+        } catch (error) {
+            console.error(" Error real:", error);
+            return false;
+        }
+    };
+
     useEffect(() => {
         getIntento();
     }, [getIntento]);
 
     return {
         intento,
-        finalizarIntento
+        finalizarIntento,
+        actualizarPrueba3
     };
 };
 

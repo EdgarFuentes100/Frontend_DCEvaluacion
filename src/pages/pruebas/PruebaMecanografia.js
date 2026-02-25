@@ -8,7 +8,6 @@ import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import ModalConfirm from '../../components/ModalConfirm';
 
-// ✅ Array de textos fuera del componente para evitar error de dependencias
 const textosMuestra = [
   "La programación es una habilidad esencial en la era digital...",
   "JavaScript es un lenguaje versátil que se utiliza para crear páginas web...",

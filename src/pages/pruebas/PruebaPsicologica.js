@@ -13,10 +13,10 @@ import ModalConfirm from '../../components/ModalConfirm';
 function PruebaPsicologica() {
   const { user, logout } = useAuthContext();
   const navigate = useNavigate();
-  const { finalizarIntento } = useIntento();
+  const { finalizarIntento, actualizarPrueba3} = useIntento();
   const { enviarCorreo } = useEmail();
 
-  const idPrueba = 3; // psicológica
+  const idPrueba = 3; 
   const { preguntas } = usePreguntas(idPrueba);
 
   // Cámara
@@ -161,15 +161,15 @@ function PruebaPsicologica() {
         excel: null
       });
       await finalizarIntento(idIntento);
-
+      await actualizarPrueba3(user?.id);
       localStorage.removeItem("intento");
       localStorage.removeItem('tiempoRestantePsicologica');
       localStorage.removeItem('tiempoTimestampPsicologica');
 
       navigate('/pruebas');
     } catch (error) {
-      console.error("❌ Error al enviar:", error);
-      alert("❌ Error al enviar los resultados");
+      console.error(" Error al enviar:", error);
+      alert(" Error al enviar los resultados");
     } finally {
       setShowModalEnviar(false);
     }
@@ -256,8 +256,21 @@ function PruebaPsicologica() {
                               type="radio"
                               name={`pregunta-${pregunta.idPregunta}`}
                               checked={respuestaGuardada?.respuesta === valor}
-                              onChange={() => guardarRespuesta(pregunta.idPregunta, valor)}
-                              className="form-check-input m-0"
+                              onChange={() => {
+                                const pesoCalculado = pregunta.pesoImportancia * valor;
+
+                                const porcentajeCalculado =
+                                  pregunta.maximo > 0
+                                    ? (pesoCalculado / pregunta.maximo) * 100
+                                    : 0;
+
+                                guardarRespuesta(
+                                  pregunta.idPregunta,
+                                  valor,
+                                  pesoCalculado,
+                                  porcentajeCalculado
+                                );
+                              }} className="form-check-input m-0"
                               style={{ width: "20px", height: "20px" }}
                             />
                             <span className={`fw-semibold ${respuestaGuardada?.respuesta === valor ? "text-primary" : "text-muted"}`}>{valor}</span>

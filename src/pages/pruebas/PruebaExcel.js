@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCamara } from '../../hook/useCamara';
 import { useAuthContext } from "../../auth/AuthProvider";
 import { useEmail } from "../../hook/useEmail";
+import { useIntento } from '../../hook/useIntento';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import ModalConfirm from '../../components/ModalConfirm';
@@ -12,11 +13,10 @@ function PruebaExcel() {
   const navigate = useNavigate();
   const { enviarCorreo } = useEmail();
   const { user, logout } = useAuthContext();
+  const { finalizarIntento } = useIntento();
 
-  // 🚀 Hook de cámara
   const { videoRef, canvasRef, fotos, isCameraActive, startCamera, stopCamera, clearPhotos } = useCamara(30);
 
-  // ⏱️ Temporizador
   const DURACION_TOTAL = 60 * 60; // 60 minutos
   const [tiempoRestante, setTiempoRestante] = useState(() => {
     const tiempoGuardado = localStorage.getItem('tiempoRestanteExcel');
@@ -61,9 +61,16 @@ function PruebaExcel() {
   // Función para enviar resultados
   const finalizarYEnviar = useCallback(async () => {
     setIsSubmitting(true);
+
+    // 🔴 Detener temporizador inmediatamente
+    setIsTimerActive(false);
+    setTiempoRestante(0);
+    setTiempoFormateado("00:00");
+
     stopCamera();
 
     let excelBlob = null;
+
     try {
       if (user.urlPlantilla) {
         const urlExport = user.urlPlantilla.replace(/\/edit.*$/, '/export?format=xlsx');
@@ -92,19 +99,23 @@ function PruebaExcel() {
         excel: dataPaquete.archivoExcel
       });
 
-      alert("✅ Expediente enviado correctamente por Email.");
-
       clearPhotos();
+
       localStorage.removeItem('tiempoRestanteExcel');
       localStorage.removeItem('tiempoTimestampExcel');
 
+      const intento = JSON.parse(localStorage.getItem("intento"));
+      const idIntento = intento?.idIntento;
+      if (idIntento) finalizarIntento(idIntento);
+
       navigate('/pruebas');
+
     } catch (error) {
       console.error("❌ Error enviando email:", error);
       alert("❌ Error enviando el correo.");
       setIsSubmitting(false);
     }
-  }, [user, fotos, enviarCorreo, clearPhotos, navigate, stopCamera]);
+  }, [user, fotos, enviarCorreo, clearPhotos, navigate, stopCamera, finalizarIntento]);
 
   // Finalizar por tiempo
   const finalizarPorTiempo = useCallback(async () => {
@@ -123,22 +134,28 @@ function PruebaExcel() {
   // Temporizador
   useEffect(() => {
     if (!isTimerActive) return;
+
     const interval = setInterval(() => {
       setTiempoRestante(prev => {
+
+        if (prev <= 1) {
+          clearInterval(interval);
+          setTiempoFormateado("00:00");
+          finalizarPorTiempo();
+          return 0;
+        }
+
         const nuevoTiempo = prev - 1;
+
         setTiempoFormateado(formatearTiempo(nuevoTiempo));
 
         localStorage.setItem('tiempoRestanteExcel', nuevoTiempo.toString());
         localStorage.setItem('tiempoTimestampExcel', Date.now().toString());
 
-        if (nuevoTiempo <= 0) {
-          clearInterval(interval);
-          finalizarPorTiempo();
-        }
-
         return nuevoTiempo;
       });
     }, 1000);
+
     return () => clearInterval(interval);
   }, [isTimerActive, finalizarPorTiempo]);
 
