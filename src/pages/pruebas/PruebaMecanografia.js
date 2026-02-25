@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { useCamara } from '../../hook/useCamara';
 import { useAuthContext } from "../../auth/AuthProvider";
-import { useEmail } from '../../hook/useEmail'; // REINSTALADO
+import { useEmail } from '../../hook/useEmail';
 import { useIntento } from '../../hook/useIntento';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
@@ -15,13 +15,13 @@ const TIEMPO_MAXIMO = 120;
 function PruebaMecanografia() {
   const navigate = useNavigate();
   const { user } = useAuthContext();
-  const { enviarCorreo } = useEmail(); // REINSTALADO
+  const { enviarCorreo } = useEmail();
   const { videoRef, canvasRef, fotos, isCameraActive, startCamera, stopCamera } = useCamara(30);
   const { finalizarIntento, actualizarPrueba1 } = useIntento();
   
   const inputRef = useRef(null);
   
-  // --- PERSISTENCIA ---
+  // --- 1. ESTADOS ---
   const [textoUsuario, setTextoUsuario] = useState(() => {
     const saved = localStorage.getItem('meca_pro_full');
     return saved ? JSON.parse(saved).textoUsuario : '';
@@ -36,7 +36,7 @@ function PruebaMecanografia() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
-  // --- CÁLCULOS ---
+  // --- 2. CÁLCULOS (useMemo) ---
   const stats = useMemo(() => {
     if (textoUsuario.length === 0) return { ppm: 0, precision: 100, errores: 0 };
     let errores = 0;
@@ -50,7 +50,19 @@ function PruebaMecanografia() {
     return { ppm, precision, errores };
   }, [textoUsuario, segundos]);
 
-  // --- HILO DE TIEMPO (WORKER) ---
+  // --- 3. FUNCIONES DE ACCIÓN (useCallback) ---
+  // Se definen antes de los useEffect para evitar el error de "Initialization"
+  const finalizar = useCallback(() => {
+    setIsFinished(true);
+    stopCamera();
+    localStorage.removeItem('meca_pro_full');
+    const intento = JSON.parse(localStorage.getItem("intento"));
+    if (intento?.idIntento) finalizarIntento(intento.idIntento);
+  }, [stopCamera, finalizarIntento]);
+
+  // --- 4. EFECTOS (useEffect) ---
+
+  // Hilo de tiempo (Worker)
   useEffect(() => {
     if (isFinished) return;
     const workerCode = `
@@ -71,35 +83,28 @@ function PruebaMecanografia() {
       });
     };
     return () => worker.terminate();
-  }, [isFinished, finalizar]);
+  }, [isFinished, finalizar]); // 'finalizar' incluido como dependencia
 
-  // Guardado para F5
+  // Guardado para persistencia (F5)
   useEffect(() => {
     localStorage.setItem('meca_pro_full', JSON.stringify({ textoUsuario, segundos }));
   }, [textoUsuario, segundos]);
 
-  const finalizar = useCallback(() => {
-    setIsFinished(true);
-    stopCamera();
-    localStorage.removeItem('meca_pro_full');
-    const intento = JSON.parse(localStorage.getItem("intento"));
-    if (intento?.idIntento) finalizarIntento(intento.idIntento);
-  }, [stopCamera, finalizarIntento]);
-
+  // Inicio de cámara y Autofocus
   useEffect(() => {
     startCamera();
+    const currentLength = textoUsuario.length;
     setTimeout(() => {
       inputRef.current?.focus();
-      inputRef.current?.setSelectionRange(textoUsuario.length, textoUsuario.length);
+      inputRef.current?.setSelectionRange(currentLength, currentLength);
     }, 600);
     return () => stopCamera();
-}, [startCamera, stopCamera, textoUsuario.length]);
+  }, [startCamera, stopCamera, textoUsuario.length]); // Dependencias completas para ESLint
 
-  // --- ENVÍO COMPLETO (CORREO + DB) ---
+  // --- 5. ENVÍO DE RESULTADOS ---
   const enviarResultadosCompletos = async () => {
     setIsSubmitting(true);
     try {
-      // 1. Envío al Correo (IMPORTANTE)
       await enviarCorreo({
         destinatario: "bernabefuentes139@gmail.com",
         asunto: `RESULTADOS MECANOGRAFÍA: ${user?.nombre || 'Estudiante'}`,
@@ -109,12 +114,10 @@ function PruebaMecanografia() {
           - Precisión: ${stats.precision}%
           - Errores totales: ${stats.errores}
           - Tiempo usado: ${segundos} seg.`,
-        fotos: fotos // Tus fotos capturadas
+        fotos: fotos 
       });
 
-      // 2. Base de Datos
       await actualizarPrueba1(user.id, { prueba1: stats.ppm });
-      
       navigate('/pruebas');
     } catch (error) {
       alert("Hubo un error al enviar el correo, pero el progreso se guardó.");
@@ -125,7 +128,7 @@ function PruebaMecanografia() {
 
   return (
     <div className="min-vh-100 d-flex flex-column bg-light" onClick={() => inputRef.current?.focus()}>
-      <Header user={user} />
+      <Header user={user} showLogout={false} />
       
       <main className="container py-4 flex-grow-1">
         <div className="row justify-content-center">
