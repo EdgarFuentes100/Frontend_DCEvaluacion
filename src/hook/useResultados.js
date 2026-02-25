@@ -3,65 +3,45 @@ import { useFetch } from "../api/useFetch";
 
 const useResultados = () => {
   const { getFetch, putFetch } = useFetch();
-
   const [resultados, setResultados] = useState([]);
-  const [errores, setErrores] = useState({});
 
-  /* ===== LISTAR ===== */
+  // Listar resultados
   const listarResultados = useCallback(async () => {
     const res = await getFetch("resultados/listar");
     if (res.ok) setResultados(res.datos);
-    console.log(res.datos);
   }, [getFetch]);
 
   useEffect(() => {
     listarResultados();
   }, [listarResultados]);
 
-  /* ===== HANDLE CHANGE EN TABLA ===== */
-  const handleChange = (idUsuario, name, value, type, checked) => {
-    if (type === "checkbox") {
-      value = checked ? 1 : 0;
-    }
-
-    setResultados((prev) =>
-      prev.map((item) =>
-        item.idUsuario === idUsuario
-          ? { ...item, [name]: value }
-          : item
-      )
-    );
-  };
-
-  /* ===== GUARDAR POR FILA ===== */
+  // Guardar resultado de un usuario
   const guardarResultado = async (resultado) => {
-    const err = {};
+    try {
+      // Validación simple
+      if (!resultado.prueba2 || resultado.aprobado === null) {
+        alert("Complete los campos obligatorios antes de guardar");
+        return;
+      }
 
-    if (!resultado.prueba1) err.prueba1 = true;
-    if (!resultado.prueba2) err.prueba2 = true;
-    if (!resultado.prueba3) err.prueba3 = true;
+      // PUT a la API
+      const res = await putFetch(`resultados/${resultado.idUsuario}`, resultado);
 
-    if (Object.keys(err).length > 0) {
-      setErrores(err);
-      return;
-    }
-
-    const res = await putFetch(
-      `resultados/${resultado.idUsuario}`,
-      resultado
-    );
-
-    if (res.ok) {
-      listarResultados();
+      if (res.ok) {
+        // Refrescar lista
+        listarResultados();
+        alert("Resultado guardado correctamente");
+      } else {
+        alert("Error al guardar resultado");
+        console.error(res);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error inesperado al guardar resultado");
     }
   };
 
-  return {
-    resultados,
-    handleChange,
-    guardarResultado,
-    errores
-  };
+  return { resultados, guardarResultado };
 };
 
 export { useResultados };
