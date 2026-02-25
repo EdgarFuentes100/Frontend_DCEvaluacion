@@ -14,18 +14,21 @@ const EvaluacionUsuarios = () => {
   const [paginaPendientes, setPaginaPendientes] = useState(1);
   const [paginaEvaluados, setPaginaEvaluados] = useState(1);
 
-  // Modal
+  // Modales
   const [showModal, setShowModal] = useState(false);
+  const [showModalPPM, setShowModalPPM] = useState(false); // NUEVO MODAL TABLA PPM
   const [usuarioSeleccionado, setUsuarioSeleccionado] = useState(null);
 
-  // Cambios locales antes de guardar
-  const [cambiosLocales, setCambiosLocales] = useState({}); // { idUsuario: { prueba2, aprobado, motivo } }
+  const [cambiosLocales, setCambiosLocales] = useState({});
 
-  // Separar pendientes y evaluados según datos guardados
-  const pendientes = resultados.filter(r => r.aprobado === null);
-  const evaluados = resultados.filter(r => r.aprobado === 0 || r.aprobado === 1);
+  // Validamos que resultados sea un array antes de filtrar para evitar el error .slice
+  const listaResultados = Array.isArray(resultados) ? resultados : [];
+  const pendientes = listaResultados.filter(r => r.aprobado === null);
+  const evaluados = listaResultados.filter(r => r.aprobado === 0 || r.aprobado === 1);
 
+  // CORRECCIÓN DEL ERROR: Validamos que items exista y sea array
   const paginar = (items, pagina) => {
+    if (!items || !Array.isArray(items)) return []; 
     const start = (pagina - 1) * itemsPerPage;
     return items.slice(start, start + itemsPerPage);
   };
@@ -41,7 +44,6 @@ const EvaluacionUsuarios = () => {
     setUsuarioSeleccionado(null);
   };
 
-  // Cambios locales
   const handleChangeLocal = (idUsuario, campo, valor) => {
     setCambiosLocales(prev => ({
       ...prev,
@@ -52,7 +54,6 @@ const EvaluacionUsuarios = () => {
     }));
   };
 
-  // Guardar cambios
   const guardarResultadoLocal = async (r) => {
     const actualizado = { ...r, ...(cambiosLocales[r.idUsuario] || {}) };
     await guardarResultado(actualizado);
@@ -63,21 +64,17 @@ const EvaluacionUsuarios = () => {
     });
   };
 
-  // Obtener valor para mostrar en la fila
   const valorFila = (r, campo) => {
     return cambiosLocales[r.idUsuario]?.[campo] ?? r[campo] ?? "";
   };
 
-  // Render fila
   const renderFila = (r, editable) => (
     <tr key={r.idUsuario}>
       <td>{r.idUsuario}</td>
       <td>{r.nombreCompleto}</td>
-
-      {/* Prueba Mecanografía solo lectura */}
-      <td><span>{r.prueba1 ?? "-"}</span></td>
-
-      {/* Prueba Excel editable solo en pendientes */}
+      <td>
+        <span className="fw-bold">{r.prueba1 ?? "-"}</span>
+      </td>
       <td>
         {editable ? (
           <input
@@ -89,11 +86,7 @@ const EvaluacionUsuarios = () => {
           <span>{r.prueba2 ?? "-"}</span>
         )}
       </td>
-
-      {/* Prueba Psicológica solo lectura */}
       <td><span>{r.prueba3 ?? "-"}</span></td>
-
-      {/* Estado editable solo en pendientes */}
       <td>
         {editable ? (
           <select
@@ -115,8 +108,6 @@ const EvaluacionUsuarios = () => {
           <span>{r.aprobado === 1 ? "Aprobado" : r.aprobado === 0 ? "Rechazado" : "-"}</span>
         )}
       </td>
-
-      {/* Motivo editable en pendientes, opcional */}
       <td>
         {editable ? (
           <input
@@ -128,34 +119,12 @@ const EvaluacionUsuarios = () => {
           <span>{r.motivo ?? "-"}</span>
         )}
       </td>
-
-      {editable && (
-        <td>
-          <button
-            className="btn btn-sm btn-primary me-1"
-            onClick={() => guardarResultadoLocal(r)}
-          >
-            Guardar
-          </button>
-          <button
-            className="btn btn-sm btn-info"
-            onClick={() => handleVerDetalles(r.idUsuario)}
-          >
-            Ver Detalles
-          </button>
-        </td>
-      )}
-
-      {!editable && (
-        <td>
-          <button
-            className="btn btn-sm btn-info"
-            onClick={() => handleVerDetalles(r.idUsuario)}
-          >
-            Ver Detalles
-          </button>
-        </td>
-      )}
+      <td>
+        {editable && (
+          <button className="btn btn-sm btn-primary me-1" onClick={() => guardarResultadoLocal(r)}>Guardar</button>
+        )}
+        <button className="btn btn-sm btn-info" onClick={() => handleVerDetalles(r.idUsuario)}>Ver Detalles</button>
+      </td>
     </tr>
   );
 
@@ -178,34 +147,35 @@ const EvaluacionUsuarios = () => {
 
   return (
     <div>
-      {/* Pestañas */}
       <ul className="nav nav-tabs mb-3">
         <li className="nav-item">
-          <button
-            className={`nav-link ${activeTab === "pendientes" ? "active" : ""}`}
-            onClick={() => setActiveTab("pendientes")}
-          >
+          <button className={`nav-link ${activeTab === "pendientes" ? "active" : ""}`} onClick={() => setActiveTab("pendientes")}>
             Pendientes ({pendientes.length})
           </button>
         </li>
         <li className="nav-item">
-          <button
-            className={`nav-link ${activeTab === "evaluados" ? "active" : ""}`}
-            onClick={() => setActiveTab("evaluados")}
-          >
+          <button className={`nav-link ${activeTab === "evaluados" ? "active" : ""}`} onClick={() => setActiveTab("evaluados")}>
             Evaluados ({evaluados.length})
           </button>
         </li>
       </ul>
 
-      {/* Tabla */}
       <div className="table-responsive">
         <table className="table table-striped align-middle">
           <thead>
             <tr>
               <th>ID</th>
               <th>Nombre</th>
-              <th>Pr. Mecanografía</th>
+              <th>
+                Pr. Mecanografía 
+                <button 
+                  className="btn btn-sm btn-link p-0 ms-1" 
+                  onClick={() => setShowModalPPM(true)}
+                  title="Ver tabla de niveles"
+                >
+                  ℹ️
+                </button>
+              </th>
               <th>Pr. Excel</th>
               <th>Pr. Psicológica</th>
               <th>Estado</th>
@@ -222,13 +192,42 @@ const EvaluacionUsuarios = () => {
         </table>
       </div>
 
-      {/* Paginación */}
-      {activeTab === "pendientes" &&
-        renderPaginacion(pendientes.length, paginaPendientes, setPaginaPendientes)}
-      {activeTab === "evaluados" &&
-        renderPaginacion(evaluados.length, paginaEvaluados, setPaginaEvaluados)}
+      {activeTab === "pendientes" && renderPaginacion(pendientes.length, paginaPendientes, setPaginaPendientes)}
+      {activeTab === "evaluados" && renderPaginacion(evaluados.length, paginaEvaluados, setPaginaEvaluados)}
 
-      {/* Modal de Detalles */}
+      {/* NUEVO MODAL: TABLA DE NIVELES PPM */}
+      <ModalConfirm
+        show={showModalPPM}
+        titulo="Tabla de Referencia PPM"
+        mensaje={
+          <table className="table table-bordered text-center mt-2">
+            <thead className="table-dark">
+              <tr>
+                <th>Rango PPM</th>
+                <th>Nivel</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="table-danger">
+                <td>0 - 30</td>
+                <td>Básico</td>
+              </tr>
+              <tr className="table-primary">
+                <td>31 - 60</td>
+                <td>Intermedio</td>
+              </tr>
+              <tr className="table-success">
+                <td>Más de 60</td>
+                <td>Avanzado</td>
+              </tr>
+            </tbody>
+          </table>
+        }
+        onConfirm={() => setShowModalPPM(false)}
+        cancelText={null}
+      />
+
+      {/* Modal de Detalles original */}
       <ModalConfirm
         show={showModal}
         size="xl"
@@ -236,7 +235,7 @@ const EvaluacionUsuarios = () => {
         mensaje={
           detalles ? (
             <div style={{ maxHeight: "60vh", overflowY: "auto" }}>
-              <table className="table table-sm table-striped mb-0" style={{ fontSize: "0.85rem" }}>
+              <table className="table table-sm table-striped mb-0">
                 <thead>
                   <tr>
                     <th>Habilidad</th>

@@ -15,7 +15,6 @@ const useIntento = () => {
         if (res.ok) setIntento(res.datos);
     }, [getFetch]);
 
-    // 🔹 Finalizar intento
     const finalizarIntento = async (idIntento) => {
         try {
             console.log("Finalizando intento:", idIntento);
@@ -43,7 +42,6 @@ const useIntento = () => {
         }
     };
 
-
     const actualizarPrueba3 = async (idUsuario) => {
         try {
             const res = await putFetch(`resultados/prueba3/${idUsuario}`);
@@ -59,6 +57,25 @@ const useIntento = () => {
         }
     };
 
+    const actualizarPrueba1 = async (idUsuario, resultado) => {
+        try {
+            console.log("Actualizando prueba1 para usuario", idUsuario, "con:", resultado);
+
+            const res = await putFetch(`resultados/prueba1/${idUsuario}`, resultado);
+
+            if (res.ok) {
+                console.log("Actualización exitosa:", res.datos);
+                return true;
+            } else {
+                console.error("Error al actualizar prueba1:", res);
+                return false;
+            }
+        } catch (error) {
+            console.error("Error real:", error);
+            return false;
+        }
+    };
+
     useEffect(() => {
         getIntento();
     }, [getIntento]);
@@ -66,7 +83,8 @@ const useIntento = () => {
     return {
         intento,
         finalizarIntento,
-        actualizarPrueba3
+        actualizarPrueba3,
+        actualizarPrueba1
     };
 };
 
