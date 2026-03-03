@@ -195,31 +195,45 @@ const EvaluacionUsuarios = () => {
       {activeTab === "pendientes" && renderPaginacion(pendientes.length, paginaPendientes, setPaginaPendientes)}
       {activeTab === "evaluados" && renderPaginacion(evaluados.length, paginaEvaluados, setPaginaEvaluados)}
 
-      {/* MODAL: TABLA DE NIVELES PPM + PRECISIÓN */}
+{/* MODAL: TABLA DE NIVELES PPM + PRECISIÓN */}
       <ModalConfirm
         show={showModalPPM}
         size="xl"
         titulo="Tabla de Referencia – Mecanografía"
         mensaje={
           <>
-            <table className="table table-bordered text-center mt-2">
-              <thead className="table-dark">
-                <tr>
-                  
-                </tr>
-              </thead>
-              <tbody>
-                
-              </tbody>
-            </table>
-
-            <div className="alert alert-warning text-start mt-3">
-              <strong>Importante:</strong><br />
-              El porcentaje de aciertos indica qué proporción de los caracteres fue
-              escrita correctamente. Un PPM alto solo mide velocidad.<br /><br />
-              Si el porcentaje de aciertos es muy bajo (por ejemplo 1%), el usuario
-              puede haber terminado el texto, pero prácticamente todo está mal escrito,
-              por lo tanto <strong>la prueba no es válida</strong>.
+            <div className="table-responsive">
+              <table className="table table-hover table-bordered text-center mt-2 align-middle">
+                <thead className="table-dark">
+                  <tr>
+                    <th>Nivel</th>
+                    <th>Rango PPM</th>
+                    <th>Perfil del Usuario</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="table-danger">
+                    <td className="fw-bold">Básico</td>
+                    <td>0 - 29</td>
+                    <td className="text-start">Uso ocasional de teclado. Tecleo lento y visual.</td>
+                  </tr>
+                  <tr className="table-warning">
+                    <td className="fw-bold">Intermedio</td>
+                    <td>30 - 49</td>
+                    <td className="text-start">Nivel estándar de oficina. Velocidad funcional.</td>
+                  </tr>
+                  <tr className="table-success">
+                    <td className="fw-bold">Profesional</td>
+                    <td>50 - 79</td>
+                    <td className="text-start">Maneja técnica de tacto. Muy productivo para trabajo diario.</td>
+                  </tr>
+                  <tr className="table-primary">
+                    <td className="fw-bold">Experto</td>
+                    <td>80+</td>
+                    <td className="text-start">Velocidad de transcripción profesional o programador experto.</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </>
         }

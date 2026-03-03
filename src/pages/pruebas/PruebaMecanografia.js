@@ -4,123 +4,135 @@ import { useCamara } from '../../hook/useCamara';
 import { useAuthContext } from "../../auth/AuthProvider";
 import { useEmail } from '../../hook/useEmail';
 import { useIntento } from '../../hook/useIntento';
+import { calcularMecanografia } from '../../hook/calcularMecanografia';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import ModalConfirm from '../../components/ModalConfirm';
 
-const TEXTO_PRUEBA = `El sol comenzaba a ocultarse tras las montañas, tiñendo el cielo de un color naranja intenso. Era el momento perfecto para caminar por la orilla del mar y sentir la brisa fresca en el rostro. A lo lejos, las aves regresaban a sus nidos mientras el sonido de las olas dictaba un ritmo tranquilo y constante. No había prisa, solo el deseo de disfrutar la paz que ofrece la naturaleza al final de un largo día. Cada paso en la arena recordaba lo importante que es detenerse a observar la belleza de lo sencillo.`;
-
-const TIEMPO_MAXIMO = 120;
+const TEXTO_PRUEBA = `La tecnología moderna ha transformado radicalmente la forma en que nos comunicamos y procesamos la información en la sociedad actual. Hace apenas unas décadas, la idea de tener acceso instantáneo a una enciclopedia global desde la palma de nuestra mano parecía ciencia ficción. Hoy en día, la interconexión digital permite que las ideas fluyan sin fronteras, permitiendo una colaboración sin precedentes entre personas de diferentes culturas y continentes. Sin embargo, este avance también presenta desafíos significativos, como la necesidad de proteger nuestra privacidad y desarrollar un pensamiento crítico ante la inmensa cantidad de datos que recibimos diariamente. Aprender a dominar herramientas digitales, como la escritura veloz en teclado, no es solo una habilidad técnica, sino una ventaja competitiva que mejora nuestra productividad y nos permite expresar pensamientos con la misma fluidez con la que surgen en nuestra mente. El futuro pertenece a quienes logren equilibrar la eficiencia de la automatización con la esencia creativa y analítica que define a los seres humanos.`;
+const TIEMPO_MAXIMO = 300; 
 
 function PruebaMecanografia() {
   const navigate = useNavigate();
   const { user } = useAuthContext();
   const { enviarCorreo } = useEmail();
-  const { videoRef, canvasRef, fotos, isCameraActive, startCamera, stopCamera } = useCamara(30);
   const { finalizarIntento, actualizarPrueba1 } = useIntento();
-  
+  const { videoRef, canvasRef, fotos, isCameraActive, startCamera, stopCamera } = useCamara(30);
+
   const inputRef = useRef(null);
+
+  /* ================= ESTADOS INICIALIZADOS DESDE STORAGE ================= */
   
-  // --- 1. ESTADOS ---
+  // 1. Recuperamos el texto si ya existía
   const [textoUsuario, setTextoUsuario] = useState(() => {
-    const saved = localStorage.getItem('meca_pro_full');
-    return saved ? JSON.parse(saved).textoUsuario : '';
+    return localStorage.getItem("mecanografia_texto") || "";
   });
 
-  const [segundos, setSegundos] = useState(() => {
-    const saved = localStorage.getItem('meca_pro_full');
-    return saved ? JSON.parse(saved).segundos : 0;
+  // 2. Recuperamos si ya había iniciado
+  const [started, setStarted] = useState(() => {
+    return localStorage.getItem("mecanografia_end_time") !== null;
   });
 
+  const [segundos, setSegundos] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
-  // --- 2. CÁLCULOS (useMemo) ---
-  const stats = useMemo(() => {
-    if (textoUsuario.length === 0) return { ppm: 0, precision: 100, errores: 0 };
-    let errores = 0;
-    for (let i = 0; i < textoUsuario.length; i++) {
-      if (textoUsuario[i] !== TEXTO_PRUEBA[i]) errores++;
-    }
-    const minutos = segundos / 60;
-    const aciertos = textoUsuario.length - errores;
-    const ppm = minutos > 0 ? Math.round((aciertos / 5) / minutos) : 0;
-    const precision = Math.round((aciertos / textoUsuario.length) * 100);
-    return { ppm, precision, errores };
-  }, [textoUsuario, segundos]);
+  /* ================= LÓGICA DEL CRONÓMETRO INMORTAL ================= */
 
-  // --- 3. FUNCIONES DE ACCIÓN (useCallback) ---
-  // Se definen antes de los useEffect para evitar el error de "Initialization"
-  const finalizar = useCallback(() => {
-    setIsFinished(true);
-    stopCamera();
-    localStorage.removeItem('meca_pro_full');
-    const intento = JSON.parse(localStorage.getItem("intento"));
-    if (intento?.idIntento) finalizarIntento(intento.idIntento);
-  }, [stopCamera, finalizarIntento]);
-
-  // --- 4. EFECTOS (useEffect) ---
-
-  // Hilo de tiempo (Worker)
   useEffect(() => {
     if (isFinished) return;
-    const workerCode = `
-      let s = 0;
-      setInterval(() => self.postMessage(++s), 1000);
-    `;
-    const blob = new Blob([workerCode], { type: 'application/javascript' });
-    const worker = new Worker(URL.createObjectURL(blob));
 
-    worker.onmessage = () => {
-      setSegundos(prev => {
-        const nuevo = prev + 1;
-        if (nuevo >= TIEMPO_MAXIMO) {
-          finalizar();
-          return TIEMPO_MAXIMO;
+    // Si al cargar detectamos que ya debería haber iniciado, activamos la cámara
+    if (started) {
+      startCamera();
+    }
+
+    const interval = setInterval(() => {
+      let endTimeStr = localStorage.getItem("mecanografia_end_time");
+
+      if (started && endTimeStr) {
+        const now = new Date();
+        const end = new Date(endTimeStr);
+        const diff = Math.floor((end - now) / 1000);
+
+        if (diff <= 0) {
+          setSegundos(TIEMPO_MAXIMO);
+          finalizarPrueba();
+          clearInterval(interval);
+        } else {
+          setSegundos(TIEMPO_MAXIMO - diff);
         }
-        return nuevo;
-      });
-    };
-    return () => worker.terminate();
-  }, [isFinished, finalizar]); // 'finalizar' incluido como dependencia
+      }
+    }, 1000);
 
-  // Guardado para persistencia (F5)
-  useEffect(() => {
-    localStorage.setItem('meca_pro_full', JSON.stringify({ textoUsuario, segundos }));
+    return () => clearInterval(interval);
+  }, [started, isFinished, startCamera]);
+
+  /* ================= ACCIONES ================= */
+
+  const finalizarPrueba = useCallback(() => {
+    if (isFinished) return;
+    setIsFinished(true);
+    stopCamera();
+    
+    // Limpiamos rastro para que la próxima vez empiece de cero
+    localStorage.removeItem("mecanografia_end_time");
+    localStorage.removeItem("mecanografia_texto");
+
+    const intento = JSON.parse(localStorage.getItem("intento"));
+    if (intento?.idIntento) finalizarIntento(intento.idIntento);
+  }, [isFinished, stopCamera, finalizarIntento]);
+
+  const iniciarPrueba = () => {
+    if (!started) {
+      const now = new Date();
+      const expiration = new Date(now.getTime() + TIEMPO_MAXIMO * 1000);
+      
+      localStorage.setItem("mecanografia_end_time", expiration.toISOString());
+      setStarted(true);
+      startCamera();
+      setTimeout(() => inputRef.current?.focus(), 300);
+    }
+  };
+
+  /* ================= CÁLCULOS ================= */
+
+  const precision = useMemo(() => {
+    return calcularMecanografia({
+      textoUsuario,
+      textoBase: TEXTO_PRUEBA,
+      tiempoSegundos: Math.max(segundos, 1),
+    }).precision;
   }, [textoUsuario, segundos]);
 
-  // Inicio de cámara y Autofocus
-  useEffect(() => {
-    startCamera();
-    const currentLength = textoUsuario.length;
-    setTimeout(() => {
-      inputRef.current?.focus();
-      inputRef.current?.setSelectionRange(currentLength, currentLength);
-    }, 600);
-    return () => stopCamera();
-  }, [startCamera, stopCamera, textoUsuario.length]); // Dependencias completas para ESLint
+  const resultadosFinales = useMemo(() => {
+    if (!isFinished) return null;
+    return calcularMecanografia({
+      textoUsuario,
+      textoBase: TEXTO_PRUEBA,
+      tiempoSegundos: segundos,
+    });
+  }, [isFinished, textoUsuario, segundos]);
 
-  // --- 5. ENVÍO DE RESULTADOS ---
-  const enviarResultadosCompletos = async () => {
+  /* ================= ENVÍO ================= */
+
+  const enviarResultados = async () => {
+    if (!resultadosFinales) return;
     setIsSubmitting(true);
     try {
       await enviarCorreo({
         destinatario: "bernabefuentes139@gmail.com",
-        asunto: `RESULTADOS MECANOGRAFÍA: ${user?.nombre || 'Estudiante'}`,
-        mensaje: `Detalles de la prueba:
-          - Usuario: ${user?.nombre}
-          - Velocidad: ${stats.ppm} PPM
-          - Precisión: ${stats.precision}%
-          - Errores totales: ${stats.errores}
-          - Tiempo usado: ${segundos} seg.`,
-        fotos: fotos 
+        asunto: `RESULTADOS MECANOGRAFÍA - ${user?.nombre}`,
+        mensaje: `Usuario: ${user?.nombre}\nPPM: ${resultadosFinales.ppm}\nPrecisión: ${resultadosFinales.precision}%\nTiempo: ${segundos}s`,
+        fotos,
       });
-
-      await actualizarPrueba1(user.id, { prueba1: stats.ppm });
+      await actualizarPrueba1(user.id, {
+        prueba1: `PPM ${resultadosFinales.ppm} | ${resultadosFinales.precision}%`,
+      });
       navigate('/pruebas');
-    } catch (error) {
-      alert("Hubo un error al enviar el correo, pero el progreso se guardó.");
+    } catch {
+      alert("Error al enviar resultados");
     } finally {
       setIsSubmitting(false);
     }
@@ -134,34 +146,30 @@ function PruebaMecanografia() {
         <div className="row justify-content-center">
           <div className="col-lg-9">
             
-            {/* HUD de información */}
+            {/* RELOJ PERSISTENTE */}
             <div className="card border-0 shadow-sm rounded-4 bg-dark text-white mb-4">
-              <div className="card-body d-flex justify-content-around align-items-center py-3">
+              <div className="card-body d-flex justify-content-around">
                 <div className="text-center">
-                  <div className="h2 m-0 text-primary">{TIEMPO_MAXIMO - segundos}s</div>
-                  <small className="opacity-50">TIEMPO</small>
+                  <div className="h2 text-primary">{Math.max(0, TIEMPO_MAXIMO - segundos)}s</div>
+                  <small>TIEMPO RESTANTE</small>
                 </div>
                 <div className="text-center">
-                  <div className="h2 m-0">{stats.ppm}</div>
-                  <small className="opacity-50">PPM</small>
-                </div>
-                <div className="text-center">
-                  <div className="h2 m-0">{stats.precision}%</div>
-                  <small className="opacity-50">ACIERTOS</small>
+                  <div className="h2">{precision}%</div>
+                  <small>PRECISIÓN</small>
                 </div>
               </div>
             </div>
 
-            {/* Texto Interactivo */}
+            {/* ÁREA DE TEXTO */}
             <div className="card border-0 shadow-lg rounded-4 mb-4">
-              <div className="card-body p-4 p-md-5 fs-4" style={{ fontFamily: 'monospace', lineHeight: '1.7', minHeight: '320px' }}>
+              <div className="card-body fs-4" style={{ fontFamily: 'monospace', minHeight: 300 }}>
                 <div className="position-relative">
                   {TEXTO_PRUEBA.split('').map((char, i) => {
-                    let color = "#bbb"; 
+                    let color = "#bbb";
                     let bg = "transparent";
                     if (i < textoUsuario.length) {
                       const ok = textoUsuario[i] === char;
-                      color = ok ? "#198754" : "#fff"; 
+                      color = ok ? "#198754" : "#fff";
                       bg = ok ? "transparent" : "#dc3545";
                     }
                     return (
@@ -170,19 +178,21 @@ function PruebaMecanografia() {
                       </span>
                     );
                   })}
-                  
+
                   <textarea
                     ref={inputRef}
                     value={textoUsuario}
+                    disabled={isFinished}
+                    onPaste={(e) => e.preventDefault()}
                     onChange={(e) => {
+                      if (!started) iniciarPrueba();
                       const val = e.target.value;
                       if (val.length <= TEXTO_PRUEBA.length) {
                         setTextoUsuario(val);
-                        if (val.length === TEXTO_PRUEBA.length) finalizar();
+                        localStorage.setItem("mecanografia_texto", val); // Guardar texto
+                        if (val.length === TEXTO_PRUEBA.length) finalizarPrueba();
                       }
                     }}
-                    onPaste={(e) => e.preventDefault()}
-                    disabled={isFinished}
                     className="position-absolute top-0 start-0 w-100 h-100 opacity-0"
                     spellCheck="false"
                   />
@@ -191,27 +201,20 @@ function PruebaMecanografia() {
             </div>
 
             {isFinished && (
-              <button className="btn btn-primary btn-lg w-100 py-3 rounded-4 fw-bold shadow-lg animate__animated animate__pulse animate__infinite"
-                      onClick={() => setShowModal(true)} disabled={isSubmitting}>
-                {isSubmitting ? 'ENVIANDO...' : 'FINALIZAR Y ENVIAR REPORTE'}
+              <button className="btn btn-primary btn-lg w-100 py-3 shadow" onClick={() => setShowModal(true)} disabled={isSubmitting}>
+                {isSubmitting ? "ENVIANDO..." : "FINALIZAR Y ENVIAR"}
               </button>
             )}
-
-            <div className="mt-3 text-center">
-              <small className={`badge ${isCameraActive ? 'bg-success' : 'bg-danger'} p-2 px-3`}>
-                {isCameraActive ? '● MONITOREO DE CÁMARA ACTIVO' : 'CÁMARA APAGADA'}
-              </small>
-            </div>
           </div>
         </div>
       </main>
 
-      <ModalConfirm 
-        show={showModal} 
-        onConfirm={enviarResultadosCompletos} 
+      <ModalConfirm
+        show={showModal}
+        onConfirm={enviarResultados}
         onCancel={() => setShowModal(false)}
         titulo="Confirmar Envío"
-        mensaje={`Se enviarán tus ${stats.ppm} PPM y evidencias al sistema. ¿Confirmar?`}
+        mensaje="Se calcularán los resultados finales basándose en tu desempeño."
       />
 
       <video ref={videoRef} className="d-none" autoPlay playsInline />
