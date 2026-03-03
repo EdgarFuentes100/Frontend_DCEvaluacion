@@ -28,7 +28,7 @@ const EvaluacionUsuarios = () => {
 
   // CORRECCIÓN DEL ERROR: Validamos que items exista y sea array
   const paginar = (items, pagina) => {
-    if (!items || !Array.isArray(items)) return []; 
+    if (!items || !Array.isArray(items)) return [];
     const start = (pagina - 1) * itemsPerPage;
     return items.slice(start, start + itemsPerPage);
   };
@@ -167,9 +167,9 @@ const EvaluacionUsuarios = () => {
               <th>ID</th>
               <th>Nombre</th>
               <th>
-                Pr. Mecanografía 
-                <button 
-                  className="btn btn-sm btn-link p-0 ms-1" 
+                Pr. Mecanografía
+                <button
+                  className="btn btn-sm btn-link p-0 ms-1"
                   onClick={() => setShowModalPPM(true)}
                   title="Ver tabla de niveles"
                 >
@@ -195,38 +195,37 @@ const EvaluacionUsuarios = () => {
       {activeTab === "pendientes" && renderPaginacion(pendientes.length, paginaPendientes, setPaginaPendientes)}
       {activeTab === "evaluados" && renderPaginacion(evaluados.length, paginaEvaluados, setPaginaEvaluados)}
 
-      {/* NUEVO MODAL: TABLA DE NIVELES PPM */}
+      {/* MODAL: TABLA DE NIVELES PPM + PRECISIÓN */}
       <ModalConfirm
         show={showModalPPM}
-        titulo="Tabla de Referencia PPM"
+        size="xl"
+        titulo="Tabla de Referencia – Mecanografía"
         mensaje={
-          <table className="table table-bordered text-center mt-2">
-            <thead className="table-dark">
-              <tr>
-                <th>Rango PPM</th>
-                <th>Nivel</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="table-danger">
-                <td>0 - 30</td>
-                <td>Básico</td>
-              </tr>
-              <tr className="table-primary">
-                <td>31 - 60</td>
-                <td>Intermedio</td>
-              </tr>
-              <tr className="table-success">
-                <td>Más de 60</td>
-                <td>Avanzado</td>
-              </tr>
-            </tbody>
-          </table>
+          <>
+            <table className="table table-bordered text-center mt-2">
+              <thead className="table-dark">
+                <tr>
+                  
+                </tr>
+              </thead>
+              <tbody>
+                
+              </tbody>
+            </table>
+
+            <div className="alert alert-warning text-start mt-3">
+              <strong>Importante:</strong><br />
+              El porcentaje de aciertos indica qué proporción de los caracteres fue
+              escrita correctamente. Un PPM alto solo mide velocidad.<br /><br />
+              Si el porcentaje de aciertos es muy bajo (por ejemplo 1%), el usuario
+              puede haber terminado el texto, pero prácticamente todo está mal escrito,
+              por lo tanto <strong>la prueba no es válida</strong>.
+            </div>
+          </>
         }
         onConfirm={() => setShowModalPPM(false)}
         cancelText={null}
       />
-
       {/* Modal de Detalles original */}
       <ModalConfirm
         show={showModal}
