@@ -17,18 +17,17 @@ function PruebaMecanografia() {
   const { user } = useAuthContext();
   const { enviarCorreo } = useEmail();
   const { finalizarIntento, actualizarPrueba1 } = useIntento();
-  const { videoRef, canvasRef, fotos, isCameraActive, startCamera, stopCamera } = useCamara(30);
+  
+  // Eliminado isCameraActive para evitar el error de variable no usada
+  const { videoRef, canvasRef, fotos, startCamera, stopCamera } = useCamara(30);
 
   const inputRef = useRef(null);
 
-  /* ================= ESTADOS INICIALIZADOS DESDE STORAGE ================= */
-  
-  // 1. Recuperamos el texto si ya existía
+  /* ================= ESTADOS ================= */
   const [textoUsuario, setTextoUsuario] = useState(() => {
     return localStorage.getItem("mecanografia_texto") || "";
   });
 
-  // 2. Recuperamos si ya había iniciado
   const [started, setStarted] = useState(() => {
     return localStorage.getItem("mecanografia_end_time") !== null;
   });
@@ -38,12 +37,25 @@ function PruebaMecanografia() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
-  /* ================= LÓGICA DEL CRONÓMETRO INMORTAL ================= */
+  /* ================= ACCIONES ================= */
+
+  const finalizarPrueba = useCallback(() => {
+    if (isFinished) return;
+    setIsFinished(true);
+    stopCamera();
+    
+    localStorage.removeItem("mecanografia_end_time");
+    localStorage.removeItem("mecanografia_texto");
+
+    const intento = JSON.parse(localStorage.getItem("intento"));
+    if (intento?.idIntento) finalizarIntento(intento.idIntento);
+  }, [isFinished, stopCamera, finalizarIntento]);
+
+  /* ================= EFECTOS ================= */
 
   useEffect(() => {
     if (isFinished) return;
 
-    // Si al cargar detectamos que ya debería haber iniciado, activamos la cámara
     if (started) {
       startCamera();
     }
@@ -67,24 +79,20 @@ function PruebaMecanografia() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [started, isFinished, startCamera]);
+  }, [started, isFinished, startCamera, finalizarPrueba]); // Dependencias corregidas
 
-  /* ================= ACCIONES ================= */
+  // Finalizar si el usuario cambia de pestaña
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.hidden && started && !isFinished) {
+        finalizarPrueba();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [started, isFinished, finalizarPrueba]);
 
-  const finalizarPrueba = useCallback(() => {
-    if (isFinished) return;
-    setIsFinished(true);
-    stopCamera();
-    
-    // Limpiamos rastro para que la próxima vez empiece de cero
-    localStorage.removeItem("mecanografia_end_time");
-    localStorage.removeItem("mecanografia_texto");
-
-    const intento = JSON.parse(localStorage.getItem("intento"));
-    if (intento?.idIntento) finalizarIntento(intento.idIntento);
-  }, [isFinished, stopCamera, finalizarIntento]);
-
-  const iniciarPrueba = () => {
+  const iniciarPrueba = useCallback(() => {
     if (!started) {
       const now = new Date();
       const expiration = new Date(now.getTime() + TIEMPO_MAXIMO * 1000);
@@ -94,7 +102,7 @@ function PruebaMecanografia() {
       startCamera();
       setTimeout(() => inputRef.current?.focus(), 300);
     }
-  };
+  }, [started, startCamera]);
 
   /* ================= CÁLCULOS ================= */
 
@@ -146,7 +154,6 @@ function PruebaMecanografia() {
         <div className="row justify-content-center">
           <div className="col-lg-9">
             
-            {/* RELOJ PERSISTENTE */}
             <div className="card border-0 shadow-sm rounded-4 bg-dark text-white mb-4">
               <div className="card-body d-flex justify-content-around">
                 <div className="text-center">
@@ -160,7 +167,6 @@ function PruebaMecanografia() {
               </div>
             </div>
 
-            {/* ÁREA DE TEXTO */}
             <div className="card border-0 shadow-lg rounded-4 mb-4">
               <div className="card-body fs-4" style={{ fontFamily: 'monospace', minHeight: 300 }}>
                 <div className="position-relative">
@@ -189,12 +195,13 @@ function PruebaMecanografia() {
                       const val = e.target.value;
                       if (val.length <= TEXTO_PRUEBA.length) {
                         setTextoUsuario(val);
-                        localStorage.setItem("mecanografia_texto", val); // Guardar texto
+                        localStorage.setItem("mecanografia_texto", val);
                         if (val.length === TEXTO_PRUEBA.length) finalizarPrueba();
                       }
                     }}
                     className="position-absolute top-0 start-0 w-100 h-100 opacity-0"
                     spellCheck="false"
+                    autoComplete="off"
                   />
                 </div>
               </div>
