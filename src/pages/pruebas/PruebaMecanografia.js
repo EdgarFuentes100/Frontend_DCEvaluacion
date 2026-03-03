@@ -17,8 +17,6 @@ function PruebaMecanografia() {
     const { user } = useAuthContext();
     const { enviarCorreo } = useEmail();
     const { finalizarIntento, actualizarPrueba1 } = useIntento();
-    
-    // Configuramos la cámara
     const { videoRef, canvasRef, fotos, startCamera, stopCamera } = useCamara(30);
 
     const inputRef = useRef(null);
@@ -29,7 +27,25 @@ function PruebaMecanografia() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showModal, setShowModal] = useState(false);
 
-    // 1. Efecto para manejar el Timer y la Cámara
+    // TRUCO MAESTRO: Guardamos la función en una referencia para que el useEffect no se queje
+    const finalizarRef = useRef();
+
+    const handleFinalizar = useCallback(() => {
+        if (isFinished) return;
+        setIsFinished(true);
+        stopCamera();
+        localStorage.removeItem("mecanografia_end_time");
+        localStorage.removeItem("mecanografia_texto");
+        const intento = JSON.parse(localStorage.getItem("intento"));
+        if (intento?.idIntento) finalizarIntento(intento.idIntento);
+    }, [isFinished, stopCamera, finalizarIntento]);
+
+    // Actualizamos la referencia siempre que cambie la función
+    useEffect(() => {
+        finalizarRef.current = handleFinalizar;
+    }, [handleFinalizar]);
+
+    // Timer corregido: Ya no depende de handleFinalizar directamente, usa la Ref
     useEffect(() => {
         if (!started || isFinished) return;
 
@@ -39,7 +55,8 @@ function PruebaMecanografia() {
                 const diff = Math.floor((new Date(endTimeStr) - new Date()) / 1000);
                 if (diff <= 0) {
                     setSegundos(TIEMPO_MAXIMO);
-                    handleFinalizar();
+                    if (finalizarRef.current) finalizarRef.current();
+                    clearInterval(interval);
                 } else {
                     setSegundos(TIEMPO_MAXIMO - diff);
                 }
@@ -47,19 +64,8 @@ function PruebaMecanografia() {
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [started, isFinished]);
+    }, [started, isFinished]); // Eliminamos handleFinalizar de aquí, ya no da error
 
-    // 2. Función para finalizar (envuelta en useCallback para evitar renders extra)
-    const handleFinalizar = useCallback(() => {
-        setIsFinished(true);
-        stopCamera();
-        localStorage.removeItem("mecanografia_end_time");
-        localStorage.removeItem("mecanografia_texto");
-        const intento = JSON.parse(localStorage.getItem("intento"));
-        if (intento?.idIntento) finalizarIntento(intento.idIntento);
-    }, [stopCamera, finalizarIntento]);
-
-    // 3. Manejador de entrada optimizado (Cero lógica pesada aquí)
     const handleChange = (e) => {
         const val = e.target.value;
         if (isFinished) return;
@@ -77,7 +83,6 @@ function PruebaMecanografia() {
         }
     };
 
-    // 4. Cálculo de precisión (solo cuando cambia el texto)
     const precision = useMemo(() => {
         if (textoUsuario.length === 0) return 100;
         let aciertos = 0;
@@ -109,17 +114,14 @@ function PruebaMecanografia() {
     return (
         <div className="min-vh-100 d-flex flex-column bg-light" onClick={() => inputRef.current?.focus()}>
             <Header user={user} showLogout={false} />
-            
             <main className="container py-4 flex-grow-1">
                 <div className="row justify-content-center">
                     <div className="col-lg-10">
-                        
-                        {/* PANEL DE ESTADÍSTICAS */}
                         <div className="card border-0 shadow-sm rounded-4 bg-dark text-white mb-4">
                             <div className="card-body d-flex justify-content-around py-3">
                                 <div className="text-center">
                                     <div className="h2 mb-0 text-primary font-monospace">{Math.max(0, TIEMPO_MAXIMO - segundos)}s</div>
-                                    <small className="text-uppercase fw-bold text-muted" style={{fontSize: '0.7rem'}}>Tiempo Restante</small>
+                                    <small className="text-uppercase fw-bold text-muted" style={{fontSize: '0.7rem'}}>Tiempo</small>
                                 </div>
                                 <div className="text-center">
                                     <div className="h2 mb-0 font-monospace">{precision}%</div>
@@ -128,46 +130,22 @@ function PruebaMecanografia() {
                             </div>
                         </div>
 
-                        {/* ÁREA DE TEXTO OPTIMIZADA */}
                         <div className="card border-0 shadow-lg rounded-4 mb-4 overflow-hidden">
-                            <div className="card-body p-4 fs-4" style={{ 
-                                fontFamily: '"Courier New", Courier, monospace', 
-                                minHeight: '320px', 
-                                lineHeight: '1.6',
-                                background: '#fff'
-                            }}>
+                            <div className="card-body p-4 fs-4" style={{ fontFamily: '"Courier New", Courier, monospace', minHeight: '320px', lineHeight: '1.6', background: '#fff' }}>
                                 <div className="position-relative" style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
-                                    
-                                    {/* CAPA 1: TEXTO YA ESCRITO */}
-                                    {textoUsuario.split('').map((char, i) => {
-                                        const isCorrect = char === TEXTO_PRUEBA[i];
-                                        return (
-                                            <span key={i} style={{ 
-                                                color: isCorrect ? '#198754' : '#fff', 
-                                                backgroundColor: isCorrect ? 'transparent' : '#dc3545' 
-                                            }}>
-                                                {TEXTO_PRUEBA[i]}
-                                            </span>
-                                        );
-                                    })}
-
-                                    {/* CAPA 2: CURSOR Y LETRA ACTUAL */}
+                                    {textoUsuario.split('').map((char, i) => (
+                                        <span key={i} style={{ color: char === TEXTO_PRUEBA[i] ? '#198754' : '#fff', backgroundColor: char === TEXTO_PRUEBA[i] ? 'transparent' : '#dc3545' }}>
+                                            {TEXTO_PRUEBA[i]}
+                                        </span>
+                                    ))}
                                     {textoUsuario.length < TEXTO_PRUEBA.length && (
-                                        <span style={{ 
-                                            backgroundColor: '#cfe2ff', 
-                                            borderLeft: '3px solid #0d6efd',
-                                            color: '#000'
-                                        }}>
+                                        <span style={{ backgroundColor: '#cfe2ff', borderLeft: '3px solid #0d6efd', color: '#000' }}>
                                           {TEXTO_PRUEBA[textoUsuario.length]}
                                         </span>
                                     )}
-
-                                    {/* CAPA 3: RESTO DEL TEXTO (TEXTO PLANO, CARGA 0) */}
                                     <span style={{ color: '#ccc' }}>
                                         {TEXTO_PRUEBA.substring(textoUsuario.length + 1)}
                                     </span>
-
-                                    {/* INPUT INVISIBLE (EL QUE MANDA) */}
                                     <textarea
                                         ref={inputRef}
                                         value={textoUsuario}
@@ -185,29 +163,16 @@ function PruebaMecanografia() {
                         </div>
 
                         {isFinished && (
-                            <button 
-                                className="btn btn-primary btn-lg w-100 py-3 shadow-sm fw-bold" 
-                                onClick={() => setShowModal(true)}
-                                disabled={isSubmitting}
-                            >
-                                {isSubmitting ? "ENVIANDO..." : "ENVIAR RESULTADOS FINALES"}
+                            <button className="btn btn-primary btn-lg w-100 py-3 shadow-sm fw-bold" onClick={() => setShowModal(true)} disabled={isSubmitting}>
+                                {isSubmitting ? "ENVIANDO..." : "ENVIAR RESULTADOS"}
                             </button>
                         )}
                     </div>
                 </div>
             </main>
-
-            {/* ELEMENTOS OCULTOS NECESARIOS */}
             <video ref={videoRef} className="d-none" autoPlay playsInline />
             <canvas ref={canvasRef} className="d-none" />
-            
-            <ModalConfirm
-                show={showModal}
-                onConfirm={enviarResultados}
-                onCancel={() => setShowModal(false)}
-                titulo="Confirmar Envío"
-                mensaje="Se guardarán tus resultados de precisión y palabras por minuto."
-            />
+            <ModalConfirm show={showModal} onConfirm={enviarResultados} onCancel={() => setShowModal(false)} />
             <Footer />
         </div>
     );
