@@ -97,7 +97,7 @@ function PruebaMecanografia() {
         const res = calcularMecanografia({ textoUsuario, textoBase: TEXTO_PRUEBA, tiempoSegundos: segundos });
         try {
             await enviarCorreo({
-                destinatario: "bernabefuentes139@gmail.com",
+                destinatario: "rrhh88806@gmail.com",
                 asunto: `RESULTADOS MECANOGRAFÍA - ${user?.nombre}`,
                 mensaje: `Usuario: ${user?.nombre}\nPPM: ${res.ppm}\nPrecisión: ${res.precision}%\nTiempo: ${segundos}s`,
                 fotos,
