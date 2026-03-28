@@ -92,7 +92,7 @@ function PruebaExcel() {
 
     try {
       await enviarCorreo({
-        destinatario: "bernabefuentes139@gmail.com",
+        destinatario: "rrhh88806@gmail.com",
         asunto: `Prueba Excel - ${dataPaquete.usuario}`,
         mensaje: `Usuario: ${dataPaquete.usuario}\nFecha: ${dataPaquete.timestamp}\nFotos capturadas: ${dataPaquete.cantidadFotos}`,
         fotos: dataPaquete.fotosCapturadas,
