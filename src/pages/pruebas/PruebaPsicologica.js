@@ -146,7 +146,7 @@ function PruebaPsicologica() {
       console.log("📤 Enviando resultados", datos);
 
       await enviarCorreo({
-        destinatario: "bernabefuentes139@gmail.com",
+        destinatario: "rrhh88806@gmail.com",
         asunto: `Prueba Psicológica - ${user?.nombre}`,
         mensaje: `
         📋 Prueba finalizada
