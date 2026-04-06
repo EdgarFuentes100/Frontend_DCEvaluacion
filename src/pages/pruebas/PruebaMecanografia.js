@@ -9,8 +9,8 @@ import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import ModalConfirm from '../../components/ModalConfirm';
 
-const TEXTO_PRUEBA = `La tecnología moderna ha transformado radicalmente la forma en que nos comunicamos y procesamos la información en la sociedad actual. Hace apenas unas décadas, la idea de tener acceso instantáneo a una enciclopedia global desde la palma de nuestra mano parecía ciencia ficción. Hoy en día, la interconexión digital permite que las ideas fluyan sin fronteras, permitiendo una colaboración sin precedentes entre personas de diferentes culturas y continentes. Sin embargo, este avance también presenta desafíos significativos, como la necesidad de proteger nuestra privacidad y desarrollar un pensamiento crítico ante la inmensa cantidad de datos que recibimos diariamente. Aprender a dominar herramientas digitales, como la escritura veloz en teclado, no es solo una habilidad técnica, sino una ventaja competitiva que mejora nuestra productividad y nos permite expresar pensamientos con la misma fluidez con la que surgen en nuestra mente. El futuro pertenece a quienes logren equilibrar la eficiencia de la automatización con la esencia creativa y analítica que define a los seres humanos.`;
-const TIEMPO_MAXIMO = 300;
+const TEXTO_PRUEBA = `Practicar la escritura en teclado es una habilidad esencial en la vida moderna. A medida que una persona entrena sus dedos, mejora su velocidad y precisión sin necesidad de mirar el teclado constantemente. Este proceso requiere paciencia, constancia y una buena postura para evitar errores y fatiga. Con el tiempo, escribir se vuelve una acción casi automática, permitiendo que las ideas fluyan con mayor rapidez. Además, dominar la mecanografía no solo aumenta la productividad, sino que también facilita la comunicación en entornos digitales.`;
+const TIEMPO_MAXIMO = 60;
 
 function PruebaMecanografia() {
     const navigate = useNavigate();
@@ -121,11 +121,11 @@ function PruebaMecanografia() {
                             <div className="card-body d-flex justify-content-around py-3">
                                 <div className="text-center">
                                     <div className="h2 mb-0 text-primary font-monospace">{Math.max(0, TIEMPO_MAXIMO - segundos)}s</div>
-                                    <small className="text-uppercase fw-bold text-muted" style={{fontSize: '0.7rem'}}>Tiempo</small>
+                                    <small className="text-uppercase fw-bold text-muted" style={{ fontSize: '0.7rem' }}>Tiempo</small>
                                 </div>
                                 <div className="text-center">
                                     <div className="h2 mb-0 font-monospace">{precision}%</div>
-                                    <small className="text-uppercase fw-bold text-muted" style={{fontSize: '0.7rem'}}>Precisión</small>
+                                    <small className="text-uppercase fw-bold text-muted" style={{ fontSize: '0.7rem' }}>Precisión</small>
                                 </div>
                             </div>
                         </div>
@@ -140,7 +140,7 @@ function PruebaMecanografia() {
                                     ))}
                                     {textoUsuario.length < TEXTO_PRUEBA.length && (
                                         <span style={{ backgroundColor: '#cfe2ff', borderLeft: '3px solid #0d6efd', color: '#000' }}>
-                                          {TEXTO_PRUEBA[textoUsuario.length]}
+                                            {TEXTO_PRUEBA[textoUsuario.length]}
                                         </span>
                                     )}
                                     <span style={{ color: '#ccc' }}>
@@ -172,7 +172,11 @@ function PruebaMecanografia() {
             </main>
             <video ref={videoRef} className="d-none" autoPlay playsInline />
             <canvas ref={canvasRef} className="d-none" />
-            <ModalConfirm show={showModal} onConfirm={enviarResultados} onCancel={() => setShowModal(false)} />
+            <ModalConfirm show={showModal}
+                titulo="Confirmar Envío - Prueba Mecanografia"
+                mensaje={`¿Deseas enviar los resultados de la prueba?`}
+                onConfirm={enviarResultados}
+                onCancel={() => setShowModal(false)} />
             <Footer />
         </div>
     );

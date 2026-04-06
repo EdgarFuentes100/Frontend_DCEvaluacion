@@ -35,7 +35,7 @@ function PruebaPsicologica() {
       return Math.max(0, tiempo - segundosPasados);
     }
 
-    return 2400; // 40 minutos
+    return 1500; 
   });
 
   const [tiempoFormateado, setTiempoFormateado] = useState(() => {

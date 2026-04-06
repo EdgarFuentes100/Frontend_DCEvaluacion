@@ -17,7 +17,7 @@ function PruebaExcel() {
 
   const { videoRef, canvasRef, fotos, isCameraActive, startCamera, stopCamera, clearPhotos } = useCamara(30);
 
-  const DURACION_TOTAL = 60 * 60; // 60 minutos
+  const DURACION_TOTAL = 10 * 60; // 60 minutos
   const [tiempoRestante, setTiempoRestante] = useState(() => {
     const tiempoGuardado = localStorage.getItem('tiempoRestanteExcel');
     const timestampGuardado = localStorage.getItem('tiempoTimestampExcel');
@@ -62,7 +62,6 @@ function PruebaExcel() {
   const finalizarYEnviar = useCallback(async () => {
     setIsSubmitting(true);
 
-    // 🔴 Detener temporizador inmediatamente
     setIsTimerActive(false);
     setTiempoRestante(0);
     setTiempoFormateado("00:00");

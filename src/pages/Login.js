@@ -90,7 +90,7 @@ function Login() {
         <div className="login-image">
           <div className="image-overlay"></div>
           <img
-            src="https://revistasumma.com/wp-content/uploads/2020/12/mundo-tecnologico.jpg"
+            src="https://t4.ftcdn.net/jpg/02/07/12/05/360_F_207120513_vleOyRpKJe5BCP451e3ZigJAukwTuHMf.jpg"
             alt="Equipo profesional"
           />
           <div className="image-text">
